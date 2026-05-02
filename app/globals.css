@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "prismjs/themes/prism-tomorrow.css";
 
 :root {
   --background: #f3f4f6;
@@ -200,3 +199,6 @@ body {
     border-bottom: 1px solid var(--border);
   }
 }
+
+/* Prism theme import placed last so token color rules take precedence */
+@import "prismjs/themes/prism-tomorrow.css";

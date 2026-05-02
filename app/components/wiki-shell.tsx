@@ -5,7 +5,7 @@ import { MDXContent } from "@content-collections/mdx/react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { BookOpen, ChevronDown, Moon, Search, Sun } from "lucide-react";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState, useRef } from "react";
 
 type ColumnName = "Welcome" | "ACM" | "游记" | "游戏" | "关于";
 
@@ -183,6 +183,43 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
 
   const tocItems = useMemo(() => extractHeadings(selectedPost.content), [selectedPost.content]);
 
+  // Ensure Prism and required language definitions are loaded on the client.
+  // Cache the loader on window to avoid duplicate imports across components.
+  async function ensurePrism() {
+    if (typeof window === "undefined") return null;
+    const anyWin = window as any;
+    if (anyWin.__prism) return anyWin.__prism;
+    anyWin.__prism = (async () => {
+      try {
+        const PrismModule = await import("prismjs");
+        // load common language components we use
+        // @ts-ignore
+        await import("prismjs/components/prism-clike");
+        // @ts-ignore
+        await import("prismjs/components/prism-cpp");
+        // @ts-ignore
+        await import("prismjs/components/prism-python");
+        // @ts-ignore
+        await import("prismjs/components/prism-javascript");
+        // return default export if present
+        return PrismModule?.default ?? PrismModule;
+      } catch (e) {
+        return null;
+      }
+    })();
+    return anyWin.__prism;
+  }
+
+  // Normalize language id (e.g. "c++" -> "cpp", uppercase -> lowercase)
+  function normalizeLang(raw?: string) {
+    if (!raw) return "";
+    let lang = raw.replace(/^language-/, "").toLowerCase();
+    if (lang === "c++") return "cpp";
+    if (lang === "c#") return "csharp";
+    if (lang === "js") return "javascript";
+    return lang.replace(/[+]/g, "p");
+  }
+
   const mdxComponents = {
     h1: ({ children, ...props }: { children?: ReactNode }) => {
       const id = slugifyHeading(toPlainText(children));
@@ -208,6 +245,55 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
         </h3>
       );
     },
+    // Custom code renderer: normalize language class and highlight after Prism is loaded
+    code: ({ className, children, ...props }: { className?: string; children?: any }) => {
+      const ref = useRef<HTMLElement | null>(null);
+
+      // derive language early so server markup has correct class when possible
+      const raw = className ?? "";
+      const lang = normalizeLang(raw);
+      const preClass = lang ? `language-${lang}` : raw;
+
+      useEffect(() => {
+        let mounted = true;
+        (async () => {
+          const Prism = await ensurePrism();
+          if (!mounted || !Prism) return;
+
+          const el = ref.current;
+          if (!el) return;
+
+          try {
+            Prism.highlightElement(el);
+          } catch (e) {
+            // ignore highlighting errors
+          }
+        })();
+        return () => {
+          mounted = false;
+        };
+      }, [className, children]);
+
+      // normalize children to plain text to ensure Prism sees raw code
+      const text = Array.isArray(children) ? children.join("") : String(children ?? "");
+
+      // if there's no language class, render inline code; otherwise render block
+      if (!preClass) {
+        return (
+          <code className={preClass} {...props}>
+            {text}
+          </code>
+        );
+      }
+
+      return (
+        <pre>
+          <code ref={ref} className={preClass} {...props}>
+            {text}
+          </code>
+        </pre>
+      );
+    },
   };
 
   return (
@@ -215,8 +301,9 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
       <header className="wiki-topbar sticky top-0 z-50 border-b">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-3 px-4">
           <Link href="/" className="wiki-brand flex items-center gap-2 font-semibold" title="回到首页">
-            {/* 这里可替换为你的头像/站点图标：将 BookOpen 替换为 Image 或自定义 SVG */}
-            <BookOpen size={18} />
+            {/* 使用 public 下的静态 favicon */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/favicon.svg" alt="Firefly" width={18} height={18} />
             <span>Firefly_IV's Blog</span>
           </Link>
 
