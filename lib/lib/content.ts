@@ -1,6 +1,6 @@
 // lib/content.ts
-import { allPosts, type Post as GeneratedPost } from "../../.content-collections/generated/index.js";
-
+// 动态加载由 content-collections 生成的内容，避免在部署时因生成文件缺失导致构建崩溃
+type GeneratedPost = any;
 export type Post = GeneratedPost;
 export type ColumnName = "Welcome" | "ACM" | "游记" | "游戏" | "关于";
 
@@ -17,8 +17,26 @@ export type PostMeta = {
 export const SITE_COLUMNS: ColumnName[] = ["Welcome", "ACM", "游记", "游戏", "关于"];
 
 // 获取所有已发布的文章，按日期降序排列
+let _cachedGeneratedAllPosts: Post[] | null = null;
+
+async function loadGeneratedAllPosts(): Promise<Post[]> {
+    if (_cachedGeneratedAllPosts) return _cachedGeneratedAllPosts;
+    try {
+        // 动态导入，如果生成文件存在则返回 allPosts
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const mod = await import("../../.content-collections/generated/index.js");
+        const posts: Post[] = (mod.allPosts ?? mod.default?.allPosts) as Post[];
+        _cachedGeneratedAllPosts = posts || [];
+        return _cachedGeneratedAllPosts;
+    } catch (err) {
+        throw new Error(
+            "内容生成文件缺失：未找到 .content-collections/generated。请在部署前生成内容（例如在构建前运行生成脚本），或将生成目录提交到仓库。"
+        );
+    }
+}
+
 export async function getAllPosts(): Promise<Post[]> {
-    const posts = allPosts.filter(
+    const posts = (await loadGeneratedAllPosts()).filter(
         (doc) => doc.published === undefined || doc.published === true
     );
 

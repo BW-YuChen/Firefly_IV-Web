@@ -1,5 +1,5 @@
 ---
-title: "欢迎来到我的数字花园"
+title: "欢迎来到我的Blog！"
 date: "2026-04-29"
 summary: "这是我使用 Next.js 16 和 Content Collections 搭建的个人空间"
 tags: ["开始", "Next.js", "博客", "学习"]
@@ -19,18 +19,15 @@ category: "入门"
 ✅ **自动部署**：GitHub + Vercel 一键发布  
 ✅ **完美写作体验**：VS Code 内直接粘贴图片
 
-## 代码示例
+## 代码渲染示例
 
-下面是 JavaScript 代码块的示例：
-
-```javascript
-// 计算斐波那契数列
-function fibonacci(n) {
-  if (n <= 1) return n;
-  return fibonacci(n - 1) + fibonacci(n - 2);
+```C++
+#include <iostream>
+using namespace std;
+int main() {
+    cout << "Hello, World!" << endl;
+    return 0;
 }
-
-console.log(fibonacci(10)); // 55
 ```
 
 ## 接下来要做什么？
