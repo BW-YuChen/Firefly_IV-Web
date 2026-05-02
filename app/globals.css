@@ -1,8 +1,28 @@
 @import "tailwindcss";
+@import "prismjs/themes/prism-tomorrow.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f4f6;
+  --foreground: #20232a;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --border: #e5e7eb;
+  --primary: #2563eb;
+  --primary-soft: #dbeafe;
+  --code-bg: #0f172a;
+  --code-fg: #e2e8f0;
+}
+
+[data-theme="dark"] {
+  --background: #0f1115;
+  --foreground: #e5e7eb;
+  --surface: #151922;
+  --surface-muted: #1d2430;
+  --border: #2a3342;
+  --primary: #60a5fa;
+  --primary-soft: #172554;
+  --code-bg: #020617;
+  --code-fg: #cbd5e1;
 }
 
 @theme inline {
@@ -12,15 +32,171 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* Wiki 全局样式 */
+.wiki-topbar {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.wiki-brand {
+  color: var(--foreground);
+}
+
+.wiki-column-tab {
+  color: color-mix(in oklab, var(--foreground) 85%, transparent);
+}
+
+/* Active top nav */
+.wiki-column-tab.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* Hide potential node settings floating widgets if present */
+#node-settings,
+.node-settings,
+.node-button,
+[data-node-settings] {
+  display: none !important;
+}
+
+.wiki-search-box {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+}
+
+.wiki-search-input {
+  color: var(--foreground);
+}
+
+.wiki-theme-btn,
+.wiki-home-btn,
+.wiki-column-row,
+.wiki-post-link,
+.wiki-toc-link {
+  color: color-mix(in oklab, var(--foreground) 90%, transparent);
+}
+
+.wiki-theme-btn:hover,
+.wiki-home-btn:hover,
+.wiki-column-row:hover,
+.wiki-post-link:hover,
+.wiki-toc-link:hover {
+  background: var(--surface-muted);
+}
+
+.wiki-sidebar,
+.wiki-toc {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.wiki-category {
+  color: color-mix(in oklab, var(--foreground) 80%, transparent);
+}
+
+.wiki-post-link.is-active {
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.wiki-content {
+  background: var(--surface);
+}
+
+.wiki-summary {
+  border-left-color: var(--primary);
+  background: color-mix(in oklab, var(--primary-soft) 60%, var(--surface));
+}
+
+/* 文章渲染优化 */
+.wiki-prose {
+  color: color-mix(in oklab, var(--foreground) 85%, transparent);
+  line-height: 1.9;
+}
+
+.wiki-prose h1,
+.wiki-prose h2,
+.wiki-prose h3 {
+  color: var(--foreground);
+  font-weight: 700;
+  margin-top: 2.2rem;
+  margin-bottom: 1rem;
+  scroll-margin-top: 84px;
+}
+
+.wiki-prose h1 {
+  font-size: 2.25rem;
+}
+
+.wiki-prose h2 {
+  font-size: 1.65rem;
+}
+
+.wiki-prose h3 {
+  font-size: 1.25rem;
+}
+
+.wiki-prose p,
+.wiki-prose ul,
+.wiki-prose ol,
+.wiki-prose blockquote {
+  margin-bottom: 1.2rem;
+}
+
+.wiki-prose a {
+  color: var(--primary);
+  text-decoration: none;
+  border-bottom: 1px dashed color-mix(in oklab, var(--primary) 70%, transparent);
+}
+
+.wiki-prose a:hover {
+  border-bottom-style: solid;
+}
+
+.wiki-prose code {
+  background: color-mix(in oklab, var(--surface-muted) 80%, var(--surface));
+  color: color-mix(in oklab, var(--foreground) 92%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 0.16rem 0.38rem;
+  font-family: var(--font-geist-mono), "Fira Code", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.wiki-prose pre {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--code-bg) 88%, #111827), var(--code-bg));
+  color: var(--code-fg);
+  border: 1px solid color-mix(in oklab, var(--code-bg) 70%, var(--border));
+  border-radius: 0.75rem;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  margin-bottom: 1.4rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.wiki-prose pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-family: var(--font-geist-mono), "Fira Code", Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+@media (max-width: 1024px) {
+  .wiki-sidebar,
+  .wiki-toc {
+    border: none;
+    border-bottom: 1px solid var(--border);
+  }
 }

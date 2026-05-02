@@ -5,15 +5,26 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint",
+    "content:build": "next build",
+    "content:watch": "next dev"
   },
   "dependencies": {
+    "@content-collections/core": "^0.15.0",
+    "@content-collections/mdx": "^0.2.2",
+    "@content-collections/next": "^0.2.11",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^1.14.0",
+    "prismjs": "^1.29.0",
     "next": "16.2.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/prismjs": "^1.16.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
