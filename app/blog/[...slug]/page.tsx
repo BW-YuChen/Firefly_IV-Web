@@ -3,18 +3,21 @@ import WikiShell from "@/app/components/wiki-shell";
 import { SITE_COLUMNS, getAllPostSlugs, getPostBySlug, getPostMetas } from "@/lib/content";
 
 interface PageProps {
-    params: Promise<{ slug: string }>;
+    params: Promise<{ slug: string[] }>;
 }
 
 // 生成静态参数
 export async function generateStaticParams() {
     const slugs = await getAllPostSlugs();
-    return slugs;
+    return slugs.map((item) => ({
+        slug: item.slug.split("/"),
+    }));
 }
 
 export default async function PostPage({ params }: PageProps) {
     const { slug } = await params;
-    const [metas, post] = await Promise.all([getPostMetas(), getPostBySlug(slug)]);
+    const slugPath = slug.join("/");
+    const [metas, post] = await Promise.all([getPostMetas(), getPostBySlug(slugPath)]);
 
     if (!post) {
         notFound();

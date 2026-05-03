@@ -92,6 +92,7 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
     Object.fromEntries(columns.map((column) => [column, true]))
   );
   const [activeColumn, setActiveColumn] = useState<ColumnName | null>(null);
+  const [openCategories, setOpenCategories] = useState<Record<string, Record<string, boolean>>>({});
 
   useEffect(() => {
     const saved = window.localStorage.getItem("wiki-theme");
@@ -117,35 +118,6 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
     document.documentElement.dataset.theme = isDark ? "dark" : "light";
     window.localStorage.setItem("wiki-theme", isDark ? "dark" : "light");
   }, [isDark]);
-
-  // Syntax highlighting: dynamically load Prism and languages on client
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const PrismModule = await import("prismjs");
-        // load common language components
-        // @ts-ignore - dynamic import of prism components (no declarations)
-        await import("prismjs/components/prism-clike");
-        // @ts-ignore
-        await import("prismjs/components/prism-python");
-        // @ts-ignore
-        await import("prismjs/components/prism-cpp");
-        // @ts-ignore
-        await import("prismjs/components/prism-java");
-        const Prism = PrismModule?.default ?? PrismModule;
-        if (mounted && Prism && typeof Prism.highlightAll === "function") {
-          // highlight after a short delay to allow MDX content to render
-          setTimeout(() => Prism.highlightAll(), 50);
-        }
-      } catch (e) {
-        // fail silently
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [selectedPost.slug]);
 
   const filteredMetas = useMemo(() => {
     const q = keyword.trim().toLowerCase();
@@ -181,34 +153,132 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
     return map;
   }, [columns, filteredMetas]);
 
+  useEffect(() => {
+    setOpenCategories((prev) => {
+      const next: Record<string, Record<string, boolean>> = { ...prev };
+      for (const column of Object.keys(grouped)) {
+        if (!next[column]) next[column] = {};
+        const categories = Object.keys(grouped[column] ?? {});
+        for (const category of categories) {
+          if (next[column][category] === undefined) {
+            next[column][category] = true;
+          }
+        }
+      }
+      return next;
+    });
+  }, [grouped]);
+
   const tocItems = useMemo(() => extractHeadings(selectedPost.content), [selectedPost.content]);
 
-  // Ensure Prism and required language definitions are loaded on the client.
-  // Cache the loader on window to avoid duplicate imports across components.
-  async function ensurePrism() {
-    if (typeof window === "undefined") return null;
-    const anyWin = window as any;
-    if (anyWin.__prism) return anyWin.__prism;
-    anyWin.__prism = (async () => {
+  // Inject toolbar and line numbers when MDX content changes.
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    let observer: MutationObserver | null = null;
+
+    const blockSelector = ".rehype-pretty-code, [data-rehype-pretty-code-figure]";
+
+    const ensurePrism = async () => {
+      if (typeof window === "undefined") return null;
+      const anyWin = window as any;
+      if (anyWin.__prism) return anyWin.__prism;
+      anyWin.__prism = (async () => {
+        try {
+          const PrismModule = await import("prismjs");
+          // @ts-ignore
+          await import("prismjs/components/prism-clike");
+          // @ts-ignore
+          await import("prismjs/components/prism-cpp");
+          // @ts-ignore
+          await import("prismjs/components/prism-python");
+          // @ts-ignore
+          await import("prismjs/components/prism-javascript");
+          // @ts-ignore
+          await import("prismjs/components/prism-bash");
+          return PrismModule?.default ?? PrismModule;
+        } catch (e) {
+          return null;
+        }
+      })();
+      return anyWin.__prism;
+    };
+
+    const injectUI = () => {
       try {
-        const PrismModule = await import("prismjs");
-        // load common language components we use
-        // @ts-ignore
-        await import("prismjs/components/prism-clike");
-        // @ts-ignore
-        await import("prismjs/components/prism-cpp");
-        // @ts-ignore
-        await import("prismjs/components/prism-python");
-        // @ts-ignore
-        await import("prismjs/components/prism-javascript");
-        // return default export if present
-        return PrismModule?.default ?? PrismModule;
+        const container = contentRef.current as HTMLElement | null;
+        if (!container) return;
+        const blocks = Array.from(container.querySelectorAll(blockSelector));
+        for (const blk of blocks) {
+          const preEl = blk.querySelector("pre");
+          if (preEl) {
+            const lang = preEl.getAttribute("data-language");
+            if (lang === "c++") preEl.setAttribute("data-language", "cpp");
+            const codeEl = preEl.querySelector("code");
+            if (codeEl && lang === "c++") codeEl.setAttribute("data-language", "cpp");
+          }
+          if (blk.querySelector(".code-toolbar")) continue;
+          const toolbar = document.createElement("div");
+          toolbar.className = "code-toolbar";
+
+          const copyBtn = document.createElement("button");
+          copyBtn.className = "code-btn code-copy-btn";
+          copyBtn.textContent = "复制";
+          copyBtn.title = "复制代码";
+
+          toolbar.appendChild(copyBtn);
+          blk.appendChild(toolbar);
+
+          copyBtn.addEventListener("click", async () => {
+            try {
+              const codeEl = blk.querySelector("pre") ?? blk.querySelector("code");
+              if (!codeEl) return;
+              const text = codeEl.innerText;
+              await navigator.clipboard.writeText(text);
+              copyBtn.textContent = "已复制";
+              setTimeout(() => (copyBtn.textContent = "复制"), 1500);
+            } catch (e) {
+              /* ignore */
+            }
+          });
+
+        }
+
+        for (const pre of Array.from(container.querySelectorAll(`${blockSelector} pre`))) {
+          const lines = pre.querySelectorAll(".line");
+          lines.forEach((ln, idx) => {
+            const el = ln as HTMLElement;
+            if (!el.dataset.lineNumber) el.dataset.lineNumber = String(idx + 1);
+          });
+        }
+
+        // Fallback highlight: only run Prism when there are no tokens from rehype-pretty-code
+        ensurePrism().then((Prism) => {
+          if (!Prism || typeof Prism.highlightElement !== "function") return;
+          const codeBlocks = Array.from(container.querySelectorAll(`${blockSelector} code`));
+          for (const codeEl of codeBlocks) {
+            if (codeEl.querySelector(".token")) continue;
+            Prism.highlightElement(codeEl);
+          }
+        });
       } catch (e) {
-        return null;
+        /* ignore */
       }
-    })();
-    return anyWin.__prism;
-  }
+    };
+
+    // initial injection
+    if (contentRef.current) injectUI();
+
+    if (contentRef.current && typeof MutationObserver !== "undefined") {
+      observer = new MutationObserver(() => {
+        injectUI();
+      });
+      observer.observe(contentRef.current, { childList: true, subtree: true });
+    }
+
+    return () => {
+      if (observer) observer.disconnect();
+    };
+  }, [selectedPost.slug, selectedPost.code]);
 
   // Normalize language id (e.g. "c++" -> "cpp", uppercase -> lowercase)
   function normalizeLang(raw?: string) {
@@ -245,53 +315,29 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
         </h3>
       );
     },
-    // Custom code renderer: normalize language class and highlight after Prism is loaded
+    // Custom code renderer: preserve rehype-pretty-code structure and only normalize class names.
     code: ({ className, children, ...props }: { className?: string; children?: any }) => {
-      const ref = useRef<HTMLElement | null>(null);
-
-      // derive language early so server markup has correct class when possible
       const raw = className ?? "";
       const lang = normalizeLang(raw);
       const preClass = lang ? `language-${lang}` : raw;
 
-      useEffect(() => {
-        let mounted = true;
-        (async () => {
-          const Prism = await ensurePrism();
-          if (!mounted || !Prism) return;
+      // If children are already React nodes (rehype-pretty-code output), render them as-is.
+      const isReactNodes =
+        children && typeof children === "object" && !Array.isArray(children?.every ? children.every((c: any) => typeof c === "string" || typeof c === "number") : false);
 
-          const el = ref.current;
-          if (!el) return;
-
-          try {
-            Prism.highlightElement(el);
-          } catch (e) {
-            // ignore highlighting errors
-          }
-        })();
-        return () => {
-          mounted = false;
-        };
-      }, [className, children]);
-
-      // normalize children to plain text to ensure Prism sees raw code
-      const text = Array.isArray(children) ? children.join("") : String(children ?? "");
-
-      // if there's no language class, render inline code; otherwise render block
+      // If there's no language class, render inline code
       if (!preClass) {
         return (
           <code className={preClass} {...props}>
-            {text}
+            {isReactNodes ? children : Array.isArray(children) ? children.join("") : String(children ?? "")}
           </code>
         );
       }
 
       return (
-        <pre>
-          <code ref={ref} className={preClass} {...props}>
-            {text}
-          </code>
-        </pre>
+        <code className={preClass} {...props}>
+          {isReactNodes ? children : Array.isArray(children) ? children.join("") : String(children ?? "")}
+        </code>
       );
     },
   };
@@ -303,7 +349,7 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
           <Link href="/" className="wiki-brand flex items-center gap-2 font-semibold" title="回到首页">
             {/* 使用 public 下的静态 favicon */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/favicon.svg" alt="Firefly" width={18} height={18} />
+            <img src="/favicon.svg" alt="Firefly" width={40} height={40} />
             <span>Firefly_IV's Blog</span>
           </Link>
 
@@ -383,21 +429,43 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
 
                     {categoryNames.map((category) => (
                       <div key={`${column}-${category}`} className="pl-2">
-                        <div className="wiki-category text-sm font-medium">{category}</div>
-                        <ul className="mt-1 space-y-1 pl-3">
-                          {categories[category].map((post) => (
-                            <li key={post.slug}>
-                              <Link
-                                href={`/blog/${post.slug}`}
-                                className={`wiki-post-link block rounded px-2 py-1 text-sm ${
-                                  post.slug === selectedPost.slug ? "is-active" : ""
-                                }`}
-                              >
-                                {post.title}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
+                        <button
+                          className="wiki-category flex w-full items-center justify-between text-sm font-medium"
+                          onClick={() =>
+                            setOpenCategories((prev) => ({
+                              ...prev,
+                              [column]: {
+                                ...(prev[column] ?? {}),
+                                [category]: !(prev[column]?.[category] ?? true),
+                              },
+                            }))
+                          }
+                          aria-expanded={openCategories[column]?.[category] ?? true}
+                        >
+                          <span>{category}</span>
+                          <ChevronDown
+                            size={12}
+                            className={`transition-transform ${
+                              openCategories[column]?.[category] ?? true ? "rotate-0" : "-rotate-90"
+                            }`}
+                          />
+                        </button>
+                        {(openCategories[column]?.[category] ?? true) && (
+                          <ul className="mt-1 space-y-1 pl-3">
+                            {categories[category].map((post) => (
+                              <li key={post.slug}>
+                                <Link
+                                  href={`/blog/${post.slug}`}
+                                  className={`wiki-post-link block rounded px-2 py-1 text-sm ${
+                                    post.slug === selectedPost.slug ? "is-active" : ""
+                                  }`}
+                                >
+                                  {post.title}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -427,7 +495,7 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
               </div>
             )}
 
-            <div className="prose wiki-prose max-w-none">
+            <div ref={contentRef} className="prose wiki-prose max-w-none">
               <MDXContent code={selectedPost.code} components={mdxComponents} />
             </div>
           </article>

@@ -7,9 +7,9 @@
   --surface-muted: #f8fafc;
   --border: #e5e7eb;
   --primary: #2563eb;
-  --primary-soft: #dbeafe;
-  --code-bg: #0f172a;
-  --code-fg: #e2e8f0;
+  --primary-soft: #ede9fe;
+  --code-bg: #f6f8fa; /* GitHub Light */
+  --code-fg: #24292f;
 }
 
 [data-theme="dark"] {
@@ -19,9 +19,9 @@
   --surface-muted: #1d2430;
   --border: #2a3342;
   --primary: #60a5fa;
-  --primary-soft: #172554;
-  --code-bg: #020617;
-  --code-fg: #cbd5e1;
+  --primary-soft: #0b1226;
+  --code-bg: #0d1117; /* GitHub Dark */
+  --code-fg: #c9d1d9;
 }
 
 @theme inline {
@@ -172,14 +172,14 @@ body {
 }
 
 .wiki-prose pre {
-  background: linear-gradient(180deg, color-mix(in oklab, var(--code-bg) 88%, #111827), var(--code-bg));
+  background: var(--code-bg);
   color: var(--code-fg);
-  border: 1px solid color-mix(in oklab, var(--code-bg) 70%, var(--border));
+  border: 1px solid color-mix(in oklab, var(--code-fg) 15%, transparent);
   border-radius: 0.75rem;
   padding: 1rem 1.1rem;
   overflow-x: auto;
   margin-bottom: 1.4rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .wiki-prose pre code {
@@ -202,3 +202,180 @@ body {
 
 /* Prism theme import placed last so token color rules take precedence */
 @import "prismjs/themes/prism-tomorrow.css";
+
+/* rehype-pretty-code / code block UI */
+.rehype-pretty-code,
+[data-rehype-pretty-code-figure] {
+  position: relative;
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+.rehype-pretty-code pre,
+[data-rehype-pretty-code-figure] pre {
+  margin: 0;
+  padding: 1rem 1rem 1rem 3.6rem; /* leave space for line numbers */
+  overflow: auto;
+  font-family: var(--font-geist-mono), "Fira Code", Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+.rehype-pretty-code > code,
+[data-rehype-pretty-code-figure] > code {
+  display: block;
+  margin: 0;
+  padding: 1rem 1rem 1rem 3.6rem;
+  overflow: auto;
+  font-family: var(--font-geist-mono), "Fira Code", Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  white-space: pre;
+  background: var(--code-bg);
+  color: var(--code-fg);
+}
+.rehype-pretty-code .line,
+[data-rehype-pretty-code-figure] .line {
+  display: block;
+  padding-right: 1rem;
+  position: relative;
+}
+.rehype-pretty-code .line::before,
+[data-rehype-pretty-code-figure] .line::before {
+  content: attr(data-line-number);
+  position: absolute;
+  left: 1rem;
+  width: 2.2rem;
+  text-align: right;
+  color: #6b7280;
+  font-size: 0.82rem;
+  user-select: none;
+}
+.rehype-pretty-code .line--highlighted,
+[data-rehype-pretty-code-figure] .line--highlighted {
+  background: color-mix(in oklab, var(--primary-soft) 25%, transparent);
+}
+.code-toolbar {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+.code-btn {
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--code-fg) 18%, transparent);
+  color: var(--code-fg);
+  padding: 0.18rem 0.36rem;
+  border-radius: 0.4rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.code-btn:hover { opacity: 0.95; }
+
+/* force VS Code Dark+ style for code blocks in both themes */
+.rehype-pretty-code pre,
+[data-rehype-pretty-code-figure] pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+}
+
+/* mobile adjustments */
+@media (max-width: 640px) {
+  .rehype-pretty-code pre,
+  [data-rehype-pretty-code-figure] pre { padding-left: 3rem; font-size: 0.78rem; }
+  .code-toolbar { top: 0.25rem; right: 0.25rem; }
+}
+
+/* Token colors: cover common Prism/Shiki token classnames so code shows colored syntax */
+.rehype-pretty-code .token,
+.rehype-pretty-code code .token,
+[data-rehype-pretty-code-figure] .token,
+[data-rehype-pretty-code-figure] code .token {
+  color: inherit;
+}
+
+/* Shiki inline style colors (rehype-pretty-code output) */
+[data-rehype-pretty-code-figure] [style*="--shiki-"] {
+  color: var(--shiki-light);
+}
+[data-theme="light"] [data-rehype-pretty-code-figure] [style*="--shiki-"] {
+  color: var(--shiki-light);
+}
+[data-theme="dark"] [data-rehype-pretty-code-figure] [style*="--shiki-"] {
+  color: var(--shiki-dark);
+}
+
+/* Comments / muted text */
+.rehype-pretty-code .token.comment,
+.rehype-pretty-code .token.prolog,
+.rehype-pretty-code .token.doctype,
+.rehype-pretty-code .token.cdata,
+[data-rehype-pretty-code-figure] .token.comment,
+[data-rehype-pretty-code-figure] .token.prolog,
+[data-rehype-pretty-code-figure] .token.doctype,
+[data-rehype-pretty-code-figure] .token.cdata {
+  color: #6a9955; /* VS Code comment */
+  font-style: italic;
+}
+
+/* Punctuation */
+.rehype-pretty-code .token.punctuation,
+[data-rehype-pretty-code-figure] .token.punctuation { color: #d4d4d4; }
+
+/* Keywords / control */
+.rehype-pretty-code .token.keyword,
+.rehype-pretty-code .token.selector,
+.rehype-pretty-code .token.tag,
+[data-rehype-pretty-code-figure] .token.keyword,
+[data-rehype-pretty-code-figure] .token.selector,
+[data-rehype-pretty-code-figure] .token.tag { color: #c586c0; }
+
+/* Functions and method names */
+.rehype-pretty-code .token.function,
+.rehype-pretty-code .token.function-call,
+.rehype-pretty-code .token.method,
+[data-rehype-pretty-code-figure] .token.function,
+[data-rehype-pretty-code-figure] .token.function-call,
+[data-rehype-pretty-code-figure] .token.method { color: #dcdcaa; }
+
+/* Variables, params */
+.rehype-pretty-code .token.variable,
+.rehype-pretty-code .token.parameter,
+[data-rehype-pretty-code-figure] .token.variable,
+[data-rehype-pretty-code-figure] .token.parameter { color: #9cdcfe; }
+
+/* Strings */
+.rehype-pretty-code .token.string,
+.rehype-pretty-code .token.char,
+.rehype-pretty-code .token.attr-value,
+[data-rehype-pretty-code-figure] .token.string,
+[data-rehype-pretty-code-figure] .token.char,
+[data-rehype-pretty-code-figure] .token.attr-value { color: #ce9178; }
+
+/* Numbers */
+.rehype-pretty-code .token.number,
+.rehype-pretty-code .token.boolean,
+[data-rehype-pretty-code-figure] .token.number,
+[data-rehype-pretty-code-figure] .token.boolean { color: #b5cea8; }
+
+/* Classes and types */
+.rehype-pretty-code .token.class-name,
+.rehype-pretty-code .token.type,
+[data-rehype-pretty-code-figure] .token.class-name,
+[data-rehype-pretty-code-figure] .token.type { color: #4ec9b0; }
+
+/* Important / builtin */
+.rehype-pretty-code .token.important,
+.rehype-pretty-code .token.builtin,
+[data-rehype-pretty-code-figure] .token.important,
+[data-rehype-pretty-code-figure] .token.builtin { color: #c586c0; font-weight: 600; }
+
+/* Shiki fallback colors when output uses semantic classes instead of Prism token names */
+.rehype-pretty-code .line .keyword,
+[data-rehype-pretty-code-figure] .line .keyword { color: #c586c0; }
+.rehype-pretty-code .line .string,
+[data-rehype-pretty-code-figure] .line .string { color: #ce9178; }
+.rehype-pretty-code .line .comment,
+[data-rehype-pretty-code-figure] .line .comment { color: #6a9955; font-style: italic; }
+
+/* Make sure inline code tokens also inherit */
+.wiki-prose code .token { color: inherit; }
