@@ -4,20 +4,10 @@ import Link from "next/link";
 import { MDXContent } from "@content-collections/mdx/react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { BookOpen, ChevronDown, Moon, Search, Sun } from "lucide-react";
+import { ChevronDown, Moon, Search, Sun } from "lucide-react";
 import { ReactNode, useEffect, useMemo, useState, useRef } from "react";
-
-type ColumnName = "Welcome" | "ACM" | "游记" | "游戏" | "关于";
-
-type PostMeta = {
-  slug: string;
-  title: string;
-  summary?: string;
-  tags?: string[];
-  date: string;
-  column: ColumnName;
-  category: string;
-};
+import { SITE_DIRECTORY_CONFIG } from "@/lib/site-structure";
+import type { ColumnName, PostMeta } from "@/lib/content";
 
 type SelectedPost = {
   slug: string;
@@ -38,7 +28,7 @@ type HeadingItem = {
 };
 
 type Props = {
-  columns: ColumnName[];
+  columns: readonly ColumnName[];
   metas: PostMeta[];
   selectedPost: SelectedPost;
 };
@@ -94,6 +84,16 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
   const [activeColumn, setActiveColumn] = useState<ColumnName | null>(null);
   const [openCategories, setOpenCategories] = useState<Record<string, Record<string, boolean>>>({});
 
+  const buildPostHref = (slug: string) => {
+    if (!activeColumn) {
+      return `/blog/${slug}`;
+    }
+
+    const params = new URLSearchParams();
+    params.set("column", activeColumn);
+    return `/blog/${slug}?${params.toString()}`;
+  };
+
   useEffect(() => {
     const saved = window.localStorage.getItem("wiki-theme");
     const dark = saved === "dark";
@@ -133,7 +133,7 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
     });
   }, [keyword, metas]);
 
-  const grouped = useMemo(() => {
+  const groupedColumns = useMemo(() => {
     const map: Record<string, Record<string, PostMeta[]>> = {};
 
     for (const column of columns) {
@@ -150,24 +150,56 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
       map[post.column][post.category].push(post);
     }
 
-    return map;
+    return columns.map((column) => {
+      const categories = map[column] ?? {};
+      const categoryNames = Object.keys(categories);
+      const config = SITE_DIRECTORY_CONFIG[column];
+      const configuredCategoryOrder = config?.categoryOrder ?? [];
+
+      const orderedCategoryNames = [
+        ...configuredCategoryOrder.filter((name) => categoryNames.includes(name)),
+        ...categoryNames.filter((name) => !configuredCategoryOrder.includes(name)).sort(),
+      ];
+
+      const orderedCategories = orderedCategoryNames.map((category) => {
+        const posts = categories[category] ?? [];
+        const configuredPostOrder = config?.postOrder?.[category] ?? [];
+
+        const orderedPosts = [
+          ...configuredPostOrder
+            .map((slug) => posts.find((post) => post.slug === slug))
+            .filter((post): post is PostMeta => Boolean(post)),
+          ...posts.filter((post) => !configuredPostOrder.includes(post.slug)),
+        ];
+
+        return {
+          category,
+          posts: orderedPosts,
+        };
+      });
+
+      return {
+        column,
+        categories: orderedCategories,
+      };
+    });
   }, [columns, filteredMetas]);
 
   useEffect(() => {
     setOpenCategories((prev) => {
       const next: Record<string, Record<string, boolean>> = { ...prev };
-      for (const column of Object.keys(grouped)) {
-        if (!next[column]) next[column] = {};
-        const categories = Object.keys(grouped[column] ?? {});
+      for (const group of groupedColumns) {
+        if (!next[group.column]) next[group.column] = {};
+        const categories = group.categories.map((item) => item.category);
         for (const category of categories) {
-          if (next[column][category] === undefined) {
-            next[column][category] = true;
+          if (next[group.column][category] === undefined) {
+            next[group.column][category] = true;
           }
         }
       }
       return next;
     });
-  }, [grouped]);
+  }, [groupedColumns]);
 
   const tocItems = useMemo(() => extractHeadings(selectedPost.content), [selectedPost.content]);
 
@@ -397,10 +429,8 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
 
       <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
         <aside className="wiki-sidebar border-r p-4">
-          {columns.map((column) => {
+          {groupedColumns.map(({ column, categories }) => {
             if (activeColumn && activeColumn !== column) return null;
-            const categories = grouped[column] ?? {};
-            const categoryNames = Object.keys(categories).sort();
             const isOpen = openColumns[column] ?? true;
 
             return (
@@ -423,11 +453,11 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
 
                 {isOpen && (
                   <div className="mt-1 space-y-2">
-                    {categoryNames.length === 0 && (
+                    {categories.length === 0 && (
                       <div className="px-3 py-1 text-xs opacity-60">暂无分类</div>
                     )}
 
-                    {categoryNames.map((category) => (
+                    {categories.map(({ category, posts }) => (
                       <div key={`${column}-${category}`} className="pl-2">
                         <button
                           className="wiki-category flex w-full items-center justify-between text-sm font-medium"
@@ -452,10 +482,10 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
                         </button>
                         {(openCategories[column]?.[category] ?? true) && (
                           <ul className="mt-1 space-y-1 pl-3">
-                            {categories[category].map((post) => (
+                            {posts.map((post) => (
                               <li key={post.slug}>
                                 <Link
-                                  href={`/blog/${post.slug}`}
+                                  href={buildPostHref(post.slug)}
                                   className={`wiki-post-link block rounded px-2 py-1 text-sm ${
                                     post.slug === selectedPost.slug ? "is-active" : ""
                                   }`}

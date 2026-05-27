@@ -28,7 +28,7 @@ export default async function PostPage({ params }: PageProps) {
             columns={SITE_COLUMNS}
             metas={metas}
             selectedPost={{
-                slug: post._meta.path,
+                slug: slugPath,
                 title: post.title,
                 summary: post.summary,
                 tags: post.tags,

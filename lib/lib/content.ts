@@ -1,8 +1,11 @@
 // lib/content.ts
 // 动态加载由 content-collections 生成的内容，避免在部署时因生成文件缺失导致构建崩溃
+import { SITE_COLUMNS } from "../site-structure";
+import type { ColumnName } from "../site-structure";
+
 type GeneratedPost = any;
 export type Post = GeneratedPost;
-export type ColumnName = "Welcome" | "ACM" | "游记" | "游戏" | "关于";
+export type { ColumnName };
 
 export type PostMeta = {
     slug: string;
@@ -14,7 +17,7 @@ export type PostMeta = {
     category: string;
 };
 
-export const SITE_COLUMNS: ColumnName[] = ["Welcome", "ACM", "游记", "游戏", "关于"];
+export { SITE_COLUMNS };
 
 function deriveColumnFromPath(pathValue: unknown): ColumnName {
     const raw = String(pathValue ?? "");
@@ -103,7 +106,7 @@ export async function getAllPostSlugs(): Promise<Array<{ slug: string }>> {
 export async function getPostMetas(): Promise<PostMeta[]> {
     const posts = await getAllPosts();
     return posts.map((post) => ({
-        slug: post._meta.path,
+        slug: normalizeSlug(post._meta.path),
         title: post.title,
         summary: post.summary,
         tags: post.tags,

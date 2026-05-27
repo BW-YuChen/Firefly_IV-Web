@@ -16,7 +16,7 @@ category: "首页"
 ✅ **现代化技术栈**：Next.js 16, React 19, Tailwind CSS  
 ✅ **便捷的内容管理**：Content Collections 提供类型安全  
 ✅ **自动部署**：GitHub + Vercel 一键发布  
-✅ **完美写作体验**：VS Code 内直接粘贴图片
+✅ **完美写作体验**：VS Code +Markdown解析
 
 ## 代码渲染示例
 

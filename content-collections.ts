@@ -3,8 +3,9 @@ import { defineCollection, defineConfig } from "@content-collections/core";
 import { compileMDX } from "@content-collections/mdx";
 import rehypePrettyCode from "rehype-pretty-code";
 import { z } from "zod";
+import { SITE_COLUMNS } from "./lib/site-structure";
 
-const columnSchema = z.enum(["Welcome", "ACM", "游记", "游戏", "关于"]);
+const columnSchema = z.enum(SITE_COLUMNS);
 
 const posts = defineCollection({
     name: "posts",

@@ -1,7 +1,7 @@
 ---
 title: "2026年23届浙江省赛·游记"
 date: "2026-05-03"
-summary: "2026年23届浙江省赛ZJCPC"
+summary: "2026年第23届浙江省赛ZJCPC"
 tags: ["游记", "ACM", "ICPC","浙江"]
 published: true
 category: "ZJCPC浙江省赛"
