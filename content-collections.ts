@@ -2,6 +2,9 @@
 import { defineCollection, defineConfig } from "@content-collections/core";
 import { compileMDX } from "@content-collections/mdx";
 import rehypePrettyCode from "rehype-pretty-code";
+import rehypeSlug from "rehype-slug";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { z } from "zod";
 import { SITE_COLUMNS } from "./lib/site-structure";
 
@@ -18,13 +21,18 @@ const posts = defineCollection({
         tags: z.array(z.string()).optional(),
         published: z.boolean().default(true),
         category: z.string().default("默认分类"),
+        weight: z.number().default(0),
         content: z.string(),
     }),
     transform: async (document, context) => {
         const rawDirectory = String(document._meta?.directory ?? "");
-        const dirSegment = rawDirectory.split(/[\\/]/)[0];
+        const normalized = rawDirectory.replace(/\\/g, "/");
+        const segments = normalized.split("/").filter(Boolean);
+        const dirSegment = segments[0] ?? "";
         const parsedColumn = columnSchema.safeParse(dirSegment);
         const column = parsedColumn.success ? parsedColumn.data : "Welcome";
+        // 分类从路径第二段推导；路径无第二段时回退到 frontmatter 的 category
+        const categoryFromPath = segments[1] ?? document.category ?? "默认分类";
         const prettyCodeOptions = {
             // Use light/dark themes (shiki theme names)
             theme: { light: "github-light", dark: "github-dark" },
@@ -47,12 +55,14 @@ const posts = defineCollection({
         };
 
         const code = await compileMDX(context, document, {
-            rehypePlugins: [[rehypePrettyCode, prettyCodeOptions]],
+            remarkPlugins: [remarkMath],
+            rehypePlugins: [rehypeSlug, [rehypePrettyCode, prettyCodeOptions], rehypeKatex],
         });
 
         return {
             ...document,
             column,
+            category: categoryFromPath,
             code,
         };
     },

@@ -37,6 +37,11 @@ body {
   font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
+/* 平滑滚动：点击目录锚点时平滑跳转到标题 */
+html {
+  scroll-behavior: smooth;
+}
+
 /* Wiki 全局样式 */
 .wiki-topbar {
   background: var(--surface);
@@ -91,6 +96,15 @@ body {
   background: var(--surface-muted);
 }
 
+/* 目录活动项：scroll spy 高亮当前标题对应的目录项 */
+.wiki-toc-link.is-active {
+  color: var(--primary);
+  font-weight: 600;
+  border-left: 2px solid var(--primary);
+  padding-left: 0.5rem;
+  background: var(--primary-soft);
+}
+
 .wiki-sidebar,
 .wiki-toc {
   background: var(--surface);
@@ -124,7 +138,10 @@ body {
 
 .wiki-prose h1,
 .wiki-prose h2,
-.wiki-prose h3 {
+.wiki-prose h3,
+.wiki-prose h4,
+.wiki-prose h5,
+.wiki-prose h6 {
   color: var(--foreground);
   font-weight: 700;
   margin-top: 2.2rem;
@@ -144,11 +161,46 @@ body {
   font-size: 1.25rem;
 }
 
+.wiki-prose h4 {
+  font-size: 1.1rem;
+}
+
+.wiki-prose h5 {
+  font-size: 1rem;
+}
+
+.wiki-prose h6 {
+  font-size: 0.95rem;
+}
+
 .wiki-prose p,
 .wiki-prose ul,
 .wiki-prose ol,
 .wiki-prose blockquote {
   margin-bottom: 1.2rem;
+}
+
+.wiki-prose ul,
+.wiki-prose ol {
+  padding-left: 1.6rem;
+}
+
+.wiki-prose ul {
+  list-style-type: disc;
+}
+
+.wiki-prose ol {
+  list-style-type: decimal;
+}
+
+.wiki-prose li {
+  margin-bottom: 0.4rem;
+}
+
+.wiki-prose li > ul,
+.wiki-prose li > ol {
+  margin-top: 0.4rem;
+  margin-bottom: 0;
 }
 
 .wiki-prose a {
@@ -218,6 +270,7 @@ body {
   font-family: var(--font-geist-mono), "Fira Code", Consolas, monospace;
   font-size: 0.88rem;
   line-height: 1.6;
+  counter-reset: line; /* CSS counter 自动生成行号，不依赖 JS */
 }
 .rehype-pretty-code > code,
 [data-rehype-pretty-code-figure] > code {
@@ -232,15 +285,18 @@ body {
   background: var(--code-bg);
   color: var(--code-fg);
 }
-.rehype-pretty-code .line,
-[data-rehype-pretty-code-figure] .line {
+/* rehype-pretty-code 输出 <span data-line=""> 包裹每一行；
+   用 CSS counter 自动编号，避免 React 重新渲染覆盖 JS 设置的属性 */
+.rehype-pretty-code [data-line],
+[data-rehype-pretty-code-figure] [data-line] {
   display: block;
   padding-right: 1rem;
   position: relative;
+  counter-increment: line;
 }
-.rehype-pretty-code .line::before,
-[data-rehype-pretty-code-figure] .line::before {
-  content: attr(data-line-number);
+.rehype-pretty-code [data-line]::before,
+[data-rehype-pretty-code-figure] [data-line]::before {
+  content: counter(line);
   position: absolute;
   left: 1rem;
   width: 2.2rem;
@@ -370,12 +426,165 @@ body {
 [data-rehype-pretty-code-figure] .token.builtin { color: #c586c0; font-weight: 600; }
 
 /* Shiki fallback colors when output uses semantic classes instead of Prism token names */
-.rehype-pretty-code .line .keyword,
-[data-rehype-pretty-code-figure] .line .keyword { color: #c586c0; }
-.rehype-pretty-code .line .string,
-[data-rehype-pretty-code-figure] .line .string { color: #ce9178; }
-.rehype-pretty-code .line .comment,
-[data-rehype-pretty-code-figure] .line .comment { color: #6a9955; font-style: italic; }
+.rehype-pretty-code [data-line] .keyword,
+[data-rehype-pretty-code-figure] [data-line] .keyword { color: #c586c0; }
+.rehype-pretty-code [data-line] .string,
+[data-rehype-pretty-code-figure] [data-line] .string { color: #ce9178; }
+.rehype-pretty-code [data-line] .comment,
+[data-rehype-pretty-code-figure] [data-line] .comment { color: #6a9955; font-style: italic; }
 
 /* Make sure inline code tokens also inherit */
 .wiki-prose code .token { color: inherit; }
+
+/* ============================================
+   移动端响应式组件样式（< 1024px）
+   ============================================ */
+
+/* 抽屉容器：固定铺满屏幕 */
+.mobile-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+/* 半透明遮罩 */
+.mobile-drawer-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+/* 抽屉面板通用样式 */
+.mobile-drawer-panel {
+  position: absolute;
+  background: var(--surface);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  animation: mobile-drawer-enter 0.2s ease-out;
+}
+
+@keyframes mobile-drawer-enter {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 顶部下滑抽屉（栏目导航） */
+.mobile-drawer-panel--top {
+  top: 0;
+  left: 0;
+  right: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--border);
+  animation: mobile-drawer-slide-down 0.25s ease-out;
+}
+
+@keyframes mobile-drawer-slide-down {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/* 右侧滑入抽屉（文章列表） */
+.mobile-drawer-panel--right {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 80%;
+  max-width: 320px;
+  border-left: 1px solid var(--border);
+  animation: mobile-drawer-slide-right 0.25s ease-out;
+}
+
+@keyframes mobile-drawer-slide-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* 浮动按钮：右下角（仅移动端显示） */
+@media (max-width: 1023px) {
+  .mobile-fab {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 50;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 9999px;
+    background: var(--primary);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    border: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .mobile-fab:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  }
+
+  .mobile-fab:active {
+    transform: scale(0.95);
+  }
+}
+
+/* 顶部折叠目录按钮 */
+.mobile-toc-toggle {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.mobile-toc-toggle:hover {
+  background: color-mix(in oklab, var(--surface-muted) 70%, var(--border));
+}
+
+/* 移动端调整：让文章标题与摘要更紧凑 */
+@media (max-width: 1023px) {
+  .wiki-content {
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+  }
+  .wiki-prose h1 {
+    font-size: 1.75rem;
+  }
+  .wiki-prose h2 {
+    font-size: 1.4rem;
+  }
+  .wiki-prose h3 {
+    font-size: 1.15rem;
+  }
+  /* 移动端隐藏桌面端侧栏与目录的旧样式残留 */
+  .wiki-sidebar,
+  .wiki-toc {
+    border: none;
+  }
+}
+
+/* 小屏手机 (< 640px) 进一步优化 */
+@media (max-width: 639px) {
+  .wiki-prose pre {
+    padding: 0.75rem;
+    font-size: 0.78rem;
+  }
+  .rehype-pretty-code pre,
+  [data-rehype-pretty-code-figure] pre {
+    padding-left: 2.5rem;
+    font-size: 0.78rem;
+  }
+  .rehype-pretty-code [data-line]::before,
+  [data-rehype-pretty-code-figure] [data-line]::before {
+    left: 0.5rem;
+    width: 1.6rem;
+    font-size: 0.75rem;
+  }
+  .mobile-fab {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}

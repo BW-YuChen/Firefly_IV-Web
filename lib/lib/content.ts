@@ -15,6 +15,7 @@ export type PostMeta = {
     date: string;
     column: ColumnName;
     category: string;
+    weight: number;
 };
 
 export { SITE_COLUMNS };
@@ -113,9 +114,10 @@ export async function getPostMetas(): Promise<PostMeta[]> {
         date: post.date,
         column: (post.column as ColumnName) ?? deriveColumnFromPath(post._meta?.path),
         category: post.category ?? "默认分类",
+        weight: post.weight ?? 0,
     }));
 }
 
 export async function getWelcomePost(): Promise<Post | undefined> {
-    return getPostBySlug("Welcome/welcome");
+    return getPostBySlug("Welcome/首页/welcome");
 }

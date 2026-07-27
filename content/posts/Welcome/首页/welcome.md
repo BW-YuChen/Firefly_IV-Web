@@ -5,6 +5,7 @@ summary: "这是我使用 Next.js 16 和 Content Collections 搭建的个人空�
 tags: ["开始", "Next.js", "博客", "学习"]
 published: true
 category: "首页"
+weight: 100
 ---
 
 # 你好，世界！👋
