@@ -81,37 +81,18 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
   const [openColumns, setOpenColumns] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(columns.map((column) => [column, true]))
   );
-  const [activeColumn, setActiveColumn] = useState<ColumnName | null>(null);
   const [openCategories, setOpenCategories] = useState<Record<string, Record<string, boolean>>>({});
 
-  const buildPostHref = (slug: string) => {
-    if (!activeColumn) {
-      return `/blog/${slug}`;
-    }
+  // 当前栏目由当前文章决定：进入任意文章页时，左侧只显示该栏目下的文章
+  const activeColumn: ColumnName = selectedPost.column;
 
-    const params = new URLSearchParams();
-    params.set("column", activeColumn);
-    return `/blog/${slug}?${params.toString()}`;
-  };
+  const buildPostHref = (slug: string) => `/blog/${slug}`;
 
   useEffect(() => {
     const saved = window.localStorage.getItem("wiki-theme");
     const dark = saved === "dark";
     setIsDark(dark);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
-  }, []);
-
-  useEffect(() => {
-    // read ?column= query to preset active column
-    try {
-      const url = new URL(window.location.href);
-      const col = url.searchParams.get("column");
-      if (col) {
-        setActiveColumn(col as ColumnName);
-      }
-    } catch (e) {
-      // ignore
-    }
   }, []);
 
   useEffect(() => {
@@ -386,24 +367,34 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
           </Link>
 
           <div className="hidden items-center gap-1 md:flex">
-            {columns.map((column) => (
-              <button
-                key={column}
-                onClick={() => {
-                  const next = activeColumn === column ? null : (column as ColumnName);
-                  setActiveColumn(next);
-                  try {
-                    const url = new URL(window.location.href);
-                    if (next) url.searchParams.set("column", String(next));
-                    else url.searchParams.delete("column");
-                    window.history.replaceState({}, "", url.toString());
-                  } catch (e) {}
-                }}
-                className={`wiki-column-tab rounded px-2 py-1 text-sm ${activeColumn === column ? "active" : ""}`}
-              >
-                {column}
-              </button>
-            ))}
+            {columns.map((column) => {
+              const group = groupedColumns.find((g) => g.column === column);
+              const firstPost = group?.categories.flatMap((c) => c.posts)[0];
+              const isActive = activeColumn === column;
+
+              if (!firstPost) {
+                return (
+                  <button
+                    key={column}
+                    disabled
+                    className={`wiki-column-tab rounded px-2 py-1 text-sm opacity-50 cursor-not-allowed`}
+                    title="该栏目暂无文章"
+                  >
+                    {column}
+                  </button>
+                );
+              }
+
+              return (
+                <Link
+                  key={column}
+                  href={buildPostHref(firstPost.slug)}
+                  className={`wiki-column-tab rounded px-2 py-1 text-sm ${isActive ? "active" : ""}`}
+                >
+                  {column}
+                </Link>
+              );
+            })}
           </div>
 
           <div className="ml-auto flex items-center gap-2">
@@ -430,7 +421,8 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
       <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
         <aside className="wiki-sidebar border-r p-4">
           {groupedColumns.map(({ column, categories }) => {
-            if (activeColumn && activeColumn !== column) return null;
+            // 仅渲染当前栏目，其他栏目的文章不在左侧显示
+            if (activeColumn !== column) return null;
             const isOpen = openColumns[column] ?? true;
 
             return (

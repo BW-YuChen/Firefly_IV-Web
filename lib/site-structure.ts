@@ -1,4 +1,4 @@
-export const SITE_COLUMNS = ["Welcome", "ACM", "游记", "Java", "关于"] as const;
+export const SITE_COLUMNS = ["Welcome", "ACM", "游记", "集训", "关于"] as const;
 
 export type ColumnName = (typeof SITE_COLUMNS)[number];
 
@@ -31,7 +31,7 @@ export const SITE_DIRECTORY_CONFIG: SiteDirectoryConfig = {
             ZJCPC浙江省赛: ["游记/26ZJCPC"],
         },
     },
-    Java: {
+    集训: {
         categoryOrder: ["基础", "面向对象", "集合", "并发", "JVM", "实战"],
         postOrder: {
             基础: [],
