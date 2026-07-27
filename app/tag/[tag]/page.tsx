@@ -14,9 +14,11 @@ interface PageProps {
 }
 
 // 生成所有标签的静态参数
+// 注意：Next.js 会自动对 params 做 encode/decode，这里返回原始字符串即可，
+// 不要再 encodeURIComponent（否则会双重编码导致路由与运行时不匹配，中文标签无法列出文章）
 export async function generateStaticParams() {
     const tags = await getAllTags();
-    return tags.map((tag) => ({ tag: encodeURIComponent(tag) }));
+    return tags.map((tag) => ({ tag }));
 }
 
 // 估算阅读时长（粗略：按 300 字/分钟）
@@ -28,6 +30,7 @@ function estimateReadingTime(content?: string): number {
 
 export default async function TagPage({ params }: PageProps) {
     const { tag } = await params;
+    // params.tag 是 URL 编码的字符串（如 %E5%BC%80%E5%A7%8B），需解码为原始中文标签
     const decoded = decodeURIComponent(tag);
     const allMetas = await getPostMetas();
     const metas = allMetas.filter((m) => m.tags?.includes(decoded));
