@@ -9,7 +9,7 @@ weight: 100
 ---
 ## 比赛信息
 
-<img src="/images/26ZJCPC/theme.jpg" alt="主题" width={500} style={{ display: 'block', margin: '0 auto' }} />
+<Img src="/images/26ZJCPC/theme.webp" alt="主题" width={500} height={281} style={{ display: 'block', margin: '0 auto' }} />
 
 - 比赛时间：2026年4月25日
 - 地点：杭州师范大学
@@ -19,7 +19,7 @@ weight: 100
 ## 关于行程
 &emsp;&emsp;比赛当天，学校安排了校车从**安吉**（😭可怜的25级计算机去不了小和山校区）到**杭州师范大学**，车程约一个多小时。教练与小和山校区的同学先行抵达，并代领了衣服和参赛证。   
 
-<img src="/images/26ZJCPC/csz.jpg" alt="参赛证" width={200} />
+<Img src="/images/26ZJCPC/csz.webp" alt="参赛证" width={200} height={267} style={{ display: 'block', margin: '1rem auto' }} />
 
 &emsp;&emsp;初见杭师大，感觉环境不错，校园很大，绿树成荫。比赛地点在**恕园16号楼**，由于出发时候的一点延迟，抵达的时候开幕式已经结束了，也几乎是最后一个拍照留念的学校了。   
 
@@ -27,7 +27,7 @@ weight: 100
 
 &emsp;&emsp;由于杭师大真的很大，找食堂花了一点时间，食堂的人非常多，排队吃饭花了很长时间，同时也因为时间紧迫，选择了出餐快的凉面，味道还行，但物价相比安吉有点小贵,毕竟是杭州城区里。  
 
-<img src="/images/26ZJCPC/lunch.jpg" alt="午餐" width={200} />
+<Img src="/images/26ZJCPC/lunch.webp" alt="午餐" width={200} height={267} style={{ display: 'block', margin: '1rem auto' }} />
 
 ## 关于比赛
 &emsp;&emsp;12点整比赛正式开始了。一人拆档案袋，一人打开提交页、调试编辑器。拿到试题，便开始寻找签到题，搞笑的是**J**题真的叫**签到题**。我**队友X**先去看了**J**，**队友H**在找数据量较小的题目，我快速翻阅，最后找到了**H**（ucup-team7610），一道字符串判断，简单解释题意后，**队友H**很快写完测完提交，14m拿下了第一题。然后在**H**题附近**I**，一道很有小巧思的题，寻找矩阵每列最小值之和的最大可能值（每行可自由变换），然后易得只要每行排序然后取最小即可。在29m时AC了第二题。  

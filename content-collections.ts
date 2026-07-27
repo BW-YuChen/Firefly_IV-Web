@@ -7,6 +7,7 @@ import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { z } from "zod";
 import { SITE_COLUMNS } from "./lib/site-structure";
+import rehypeImgToComponent from "./scripts/rehype-img-to-component";
 
 const columnSchema = z.enum(SITE_COLUMNS);
 
@@ -56,7 +57,7 @@ const posts = defineCollection({
 
         const code = await compileMDX(context, document, {
             remarkPlugins: [remarkMath],
-            rehypePlugins: [rehypeSlug, [rehypePrettyCode, prettyCodeOptions], rehypeKatex],
+            rehypePlugins: [rehypeSlug, [rehypePrettyCode, prettyCodeOptions], rehypeKatex, rehypeImgToComponent],
         });
 
         return {

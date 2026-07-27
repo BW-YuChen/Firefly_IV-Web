@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { MDXContent } from "@content-collections/mdx/react";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -15,7 +17,10 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useRef } from "react";
+import type { CSSProperties } from "react";
 import type { ColumnName, PostMeta } from "@/lib/content";
+import { TagList } from "./tag-list";
+import { SearchPopover, type SearchHit } from "./search-popover";
 
 // ============================================================
 // 类型定义
@@ -29,6 +34,8 @@ type SelectedPost = {
   date: string;
   content: string;
   code: string;
+  // 服务端预算的标题列表；优先使用，避免客户端重复解析 content
+  headings?: HeadingItem[];
   column: ColumnName;
   category: string;
 };
@@ -113,25 +120,75 @@ const mdxComponents = {
       </code>
     );
   },
+  // MDX 里 <img> 会被编译成字符串 "img"（原生 HTML 元素），不走 components 映射
+  // 所以用 rehype 插件把 <img> 转成 <Img> 组件调用，这里提供 Img 组件用 next/image
+  Img: ({
+    src,
+    alt = "",
+    width = 800,
+    height = 600,
+    style,
+    ...props
+  }: {
+    src?: string;
+    alt?: string;
+    width?: number;
+    height?: number;
+    style?: CSSProperties;
+  } & Record<string, any>) => {
+    if (!src || typeof src !== "string") return null;
+    if (src.startsWith("/")) {
+      // 用户传入的 style 直接作用于 Image 本身（含 borderRadius、margin 等），
+      // 避免外层 span 拦截视觉样式导致头像椭圆等问题
+      return (
+        <span className="wiki-img-wrap" style={{ display: "block", textAlign: "center" }}>
+          <Image
+            src={src}
+            alt={alt}
+            width={width}
+            height={height}
+            sizes="(max-width: 768px) 100vw, 768px"
+            style={{
+              width: "100%",
+              height: "auto",
+              maxWidth: width,
+              borderRadius: "0.5rem",
+              ...style,
+            }}
+            {...props}
+          />
+        </span>
+      );
+    }
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={alt} loading="lazy" decoding="async" style={{ maxWidth: width, ...style }} {...props} />;
+  },
 };
 
 // ============================================================
 // 自定义 hook：主题管理（亮/暗）
+// 主题已在 layout.tsx 的内联脚本中同步设置到 <html data-theme>，
+// 这里从 dataset 读取初始值，避免 useState 默认 false 导致的二次切换闪烁
 // ============================================================
 
 function useTheme() {
-  const [isDark, setIsDark] = useState(false);
+  // lazy 初始：从 document.documentElement.dataset.theme 派生
+  // 内联脚本已在 React hydration 前设置好，保证与服务端一致、无 FOUC
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof document === "undefined") return false;
+    return document.documentElement.dataset.theme === "dark";
+  });
 
+  // 单向同步：isDark 变化时同步更新 dataset + localStorage
+  // 移除原先"读取 localStorage 设置 isDark"的 useEffect，避免双向触发错乱
   useEffect(() => {
-    const saved = window.localStorage.getItem("wiki-theme");
-    const dark = saved === "dark";
-    setIsDark(dark);
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = isDark ? "dark" : "light";
-    window.localStorage.setItem("wiki-theme", isDark ? "dark" : "light");
+    const next = isDark ? "dark" : "light";
+    document.documentElement.dataset.theme = next;
+    try {
+      window.localStorage.setItem("wiki-theme", next);
+    } catch {
+      /* localStorage 不可用（隐私模式等）时静默忽略 */
+    }
   }, [isDark]);
 
   return { isDark, toggle: () => setIsDark((v) => !v) };
@@ -176,7 +233,8 @@ function useScrollSpy(itemIds: string[], offset = 120) {
 }
 
 // ============================================================
-// 自定义 hook：代码块 UI 注入（工具栏 + 行号 + Prism 兜底高亮）
+// 自定义 hook：代码块 UI 注入（工具栏 + 语言名规范化）
+// 行号由 CSS counter 生成（见 globals.css）；高亮由 rehype-pretty-code 构建时完成
 // ============================================================
 
 function useCodeBlockUI(
@@ -187,31 +245,6 @@ function useCodeBlockUI(
     let observer: MutationObserver | null = null;
     const blockSelector = ".rehype-pretty-code, [data-rehype-pretty-code-figure]";
 
-    const ensurePrism = async () => {
-      if (typeof window === "undefined") return null;
-      const anyWin = window as any;
-      if (anyWin.__prism) return anyWin.__prism;
-      anyWin.__prism = (async () => {
-        try {
-          const PrismModule = await import("prismjs");
-          // @ts-ignore
-          await import("prismjs/components/prism-clike");
-          // @ts-ignore
-          await import("prismjs/components/prism-cpp");
-          // @ts-ignore
-          await import("prismjs/components/prism-python");
-          // @ts-ignore
-          await import("prismjs/components/prism-javascript");
-          // @ts-ignore
-          await import("prismjs/components/prism-bash");
-          return PrismModule?.default ?? PrismModule;
-        } catch {
-          return null;
-        }
-      })();
-      return anyWin.__prism;
-    };
-
     let isInjecting = false;
     const injectUI = () => {
       if (isInjecting) return;
@@ -221,6 +254,8 @@ function useCodeBlockUI(
         if (!container) return;
 
         // 行号已改用 CSS counter 自动生成（见 globals.css），不再需要 JS 注入
+        // prismjs 兜底高亮已移除：rehype-pretty-code 在构建时用 shiki 完成高亮，
+        // 运行时再动态 import prismjs 会拖慢首次代码块渲染，且 shiki 已足够。
 
         // 规范化语言名 + 添加工具栏（会新增 DOM 元素，可能触发 MutationObserver）
         const blocks = Array.from(container.querySelectorAll(blockSelector));
@@ -258,16 +293,6 @@ function useCodeBlockUI(
             }
           });
         }
-
-        // Fallback：仅当 rehype-pretty-code 未生成 token 时才用 Prism 高亮
-        ensurePrism().then((Prism) => {
-          if (!Prism || typeof Prism.highlightElement !== "function") return;
-          const codeBlocks = Array.from(container.querySelectorAll(`${blockSelector} code`));
-          for (const codeEl of codeBlocks) {
-            if (codeEl.querySelector(".token")) continue;
-            Prism.highlightElement(codeEl);
-          }
-        });
       } catch {
         /* ignore */
       } finally {
@@ -347,7 +372,14 @@ function ColumnCategoryList({
                             post.slug === selectedSlug ? "is-active" : ""
                           }`}
                         >
-                          {post.title}
+                          <span className="wiki-post-title">{post.title}</span>
+                          {post.tags && post.tags.length > 0 && (
+                            <span className="wiki-tag-dots" aria-hidden="true">
+                              {post.tags.slice(0, 3).map((t) => (
+                                <span key={t} className="wiki-tag-dot" title={t} />
+                              ))}
+                            </span>
+                          )}
                         </Link>
                       </li>
                     ))}
@@ -402,7 +434,14 @@ function ColumnCategoryList({
                                   post.slug === selectedSlug ? "is-active" : ""
                                 }`}
                               >
-                                {post.title}
+                                <span className="wiki-post-title">{post.title}</span>
+                                {post.tags && post.tags.length > 0 && (
+                                  <span className="wiki-tag-dots" aria-hidden="true">
+                                    {post.tags.slice(0, 3).map((t) => (
+                                      <span key={t} className="wiki-tag-dot" title={t} />
+                                    ))}
+                                  </span>
+                                )}
                               </Link>
                             </li>
                           ))}
@@ -552,24 +591,71 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
   const activeColumn: ColumnName = selectedPost.column;
   const buildPostHref = (slug: string) => `/blog/${slug}`;
 
-  // 搜索过滤
-  const filteredMetas = useMemo(() => {
+  // 搜索：独立跨栏目过滤，不再驱动左侧栏分组
+  // 左侧栏始终展示完整 metas（按 activeColumn 过滤），搜索结果通过下拉弹层展示
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeHitIndex, setActiveHitIndex] = useState(0);
+  const router = useRouter();
+
+  const searchHits = useMemo<SearchHit[]>(() => {
     const q = keyword.trim().toLowerCase();
-    if (!q) return metas;
-    return metas.filter((post) => {
-      const title = post.title.toLowerCase();
-      const summary = (post.summary ?? "").toLowerCase();
-      const tags = (post.tags ?? []).join(" ").toLowerCase();
-      return title.includes(q) || summary.includes(q) || tags.includes(q);
-    });
+    if (!q) return [];
+    return metas
+      .filter((post) => {
+        const title = post.title.toLowerCase();
+        const summary = (post.summary ?? "").toLowerCase();
+        const tags = (post.tags ?? []).join(" ").toLowerCase();
+        return title.includes(q) || summary.includes(q) || tags.includes(q);
+      })
+      .map((p) => ({
+        slug: p.slug,
+        title: p.title,
+        summary: p.summary,
+        column: p.column,
+        category: p.category,
+        tags: p.tags,
+      }));
   }, [keyword, metas]);
 
-  // 栏目 → 分类 → 文章 分组与排序
+  // 当搜索词变化时重置活动项并开关弹层
+  useEffect(() => {
+    setActiveHitIndex(0);
+    setSearchOpen(keyword.trim().length > 0);
+  }, [keyword]);
+
+  // 键盘导航：↑↓ 移动、Enter 跳转、Esc 关闭
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!searchOpen) setSearchOpen(true);
+      setActiveHitIndex((i) => Math.min(i + 1, Math.min(searchHits.length, 10) - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveHitIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      if (searchHits.length > 0) {
+        const hit = searchHits[Math.min(activeHitIndex, searchHits.length - 1)];
+        if (hit) handleNavigateFromSearch(hit.slug);
+      }
+    } else if (e.key === "Escape") {
+      setSearchOpen(false);
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
+  const handleNavigateFromSearch = (slug: string) => {
+    setSearchOpen(false);
+    setKeyword("");
+    setActiveHitIndex(0);
+    router.push(buildPostHref(slug));
+  };
+
+  // 栏目 → 分类 → 文章 分组与排序（基于全量 metas，不再被搜索过滤）
   const groupedColumns: GroupedColumns = useMemo(() => {
     const map: Record<string, Record<string, PostMeta[]>> = {};
     for (const column of columns) map[column] = {};
 
-    for (const post of filteredMetas) {
+    for (const post of metas) {
       if (!map[post.column]) map[post.column] = {};
       if (!map[post.column][post.category]) map[post.column][post.category] = [];
       map[post.column][post.category].push(post);
@@ -605,7 +691,7 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
 
       return { column, categories: sortedCategories };
     });
-  }, [columns, filteredMetas]);
+  }, [columns, metas]);
 
   // 初始化分类折叠状态
   useEffect(() => {
@@ -623,7 +709,11 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
     });
   }, [groupedColumns]);
 
-  const tocItems = useMemo(() => extractHeadings(selectedPost.content), [selectedPost.content]);
+  // 优先使用服务端预算的 headings；缺失时回退到客户端解析 content（兼容旧调用方）
+  const tocItems = useMemo(
+    () => selectedPost.headings ?? extractHeadings(selectedPost.content),
+    [selectedPost.headings, selectedPost.content]
+  );
   const tocIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
   const activeTocId = useScrollSpy(tocIds);
 
@@ -686,21 +776,43 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
           </div>
 
           <div className="ml-auto flex items-center gap-2">
-            <div className="wiki-search-box flex items-center gap-2 rounded-md px-3 py-1.5">
+            <div className="wiki-search-box relative flex items-center gap-2 rounded-md px-3 py-1.5">
               <Search size={16} className="opacity-70" />
               <input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                placeholder="搜索标题、概要、标签"
+                onFocus={() => {
+                  if (keyword.trim()) setSearchOpen(true);
+                }}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="搜索文章..."
                 className="wiki-search-input w-32 bg-transparent text-sm outline-none sm:w-48 md:w-64"
+                role="combobox"
+                aria-expanded={searchOpen}
+                aria-controls="wiki-search-popover"
+                aria-autocomplete="list"
+              />
+              <SearchPopover
+                query={keyword}
+                hits={searchHits}
+                open={searchOpen}
+                activeIndex={activeHitIndex}
+                onNavigate={handleNavigateFromSearch}
+                onClose={() => setSearchOpen(false)}
               />
             </div>
             <button
               onClick={toggleTheme}
               className="wiki-theme-btn rounded-md p-2"
-              title="切换夜间模式"
+              title={isDark ? "当前：暗色模式（点击切换到亮色）" : "当前：亮色模式（点击切换到暗色）"}
+              aria-pressed={isDark}
+              aria-label={isDark ? "切换到亮色模式" : "切换到暗色模式"}
+              suppressHydrationWarning
             >
-              {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              {/* 同时渲染两个图标，由 CSS [data-theme] 控制显隐，避免 hydration mismatch
+                  图标语义：显示当前状态（亮色显 Sun、暗色显 Moon），点击切换到另一模式 */}
+              <Sun size={16} className="wiki-theme-icon-light" />
+              <Moon size={16} className="wiki-theme-icon-dark" />
             </button>
           </div>
         </div>
@@ -762,6 +874,10 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
               <span>{selectedPost.category}</span>
             </div>
 
+            {selectedPost.tags && selectedPost.tags.length > 0 && (
+              <TagList tags={selectedPost.tags} size="md" />
+            )}
+
             {selectedPost.summary && (
               <div className="wiki-summary mb-8 rounded border-l-4 px-4 py-3 italic">
                 {selectedPost.summary}
@@ -788,7 +904,7 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
               )}
             </div>
 
-            <div ref={contentRef} className="prose wiki-prose max-w-none">
+            <div ref={contentRef} key={selectedPost.slug} className="prose wiki-prose max-w-none">
               <MDXContent code={selectedPost.code} components={mdxComponents} />
             </div>
           </article>

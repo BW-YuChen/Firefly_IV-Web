@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# trae 本地文档（方案/计划文件，不入版本库）
+.trae/

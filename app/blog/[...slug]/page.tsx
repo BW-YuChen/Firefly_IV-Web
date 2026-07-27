@@ -1,6 +1,16 @@
 import { notFound } from "next/navigation";
 import WikiShell from "@/app/components/wiki-shell";
-import { SITE_COLUMNS, getAllPostSlugs, getPostBySlug, getPostMetas } from "@/lib/content";
+import {
+    SITE_COLUMNS,
+    extractHeadings,
+    getAllPostSlugs,
+    getPostBySlug,
+    getPostMetas,
+} from "@/lib/content";
+
+// 显式静态化：避免任何动态判定，客户端导航走预渲染的 RSC payload
+export const dynamic = "force-static";
+export const revalidate = false;
 
 interface PageProps {
     params: Promise<{ slug: string[] }>;
@@ -23,6 +33,9 @@ export default async function PostPage({ params }: PageProps) {
         notFound();
     }
 
+    // 服务端预算 headings：避免把 content 原文传到客户端再二次解析
+    const headings = extractHeadings(post.content);
+
     return (
         <WikiShell
             columns={SITE_COLUMNS}
@@ -35,6 +48,7 @@ export default async function PostPage({ params }: PageProps) {
                 date: post.date,
                 content: post.content,
                 code: post.code,
+                headings,
                 column: post.column,
                 category: post.category,
             }}

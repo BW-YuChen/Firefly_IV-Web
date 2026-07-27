@@ -96,6 +96,37 @@ html {
   background: var(--surface-muted);
 }
 
+/* 主题切换按钮：同时渲染 Sun/Moon 两个图标，由 [data-theme] 控制显隐
+   图标语义：显示当前状态（亮色显 Sun、暗色显 Moon），点击切换到另一模式
+   避免 isDark 状态导致的服务端/客户端 hydration mismatch */
+.wiki-theme-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+.wiki-theme-icon-light,
+.wiki-theme-icon-dark {
+  position: absolute;
+  transition: opacity 0.15s;
+}
+/* 亮色模式：显示 Sun（当前状态）；隐藏 Moon */
+[data-theme="light"] .wiki-theme-icon-light {
+  opacity: 1;
+}
+[data-theme="light"] .wiki-theme-icon-dark {
+  opacity: 0;
+}
+/* 暗色模式：显示 Moon（当前状态）；隐藏 Sun */
+[data-theme="dark"] .wiki-theme-icon-light {
+  opacity: 0;
+}
+[data-theme="dark"] .wiki-theme-icon-dark {
+  opacity: 1;
+}
+
 /* 目录活动项：scroll spy 高亮当前标题对应的目录项 */
 .wiki-toc-link.is-active {
   color: var(--primary);
@@ -255,6 +286,303 @@ html {
 /* Prism theme import placed last so token color rules take precedence */
 @import "prismjs/themes/prism-tomorrow.css";
 
+/* 文章图片：加载渐入动画，改善用户感知性能 */
+.wiki-img-wrap {
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+}
+.wiki-img-wrap img {
+  transition: opacity 0.3s ease;
+}
+.wiki-img-wrap img[data-nimg="1"]:not([srcset]) {
+  opacity: 0;
+}
+.wiki-img-wrap img[srcset] {
+  opacity: 1;
+}
+
+/* 客户端导航期间的骨架屏过渡，改善用户感知性能 */
+.wiki-loading {
+  padding: 2rem 1rem;
+  max-width: 48rem;
+  margin: 0 auto;
+}
+.wiki-loading-title,
+.wiki-loading-meta,
+.wiki-loading-line {
+  background: var(--surface-muted, rgba(0, 0, 0, 0.06));
+  border-radius: 0.5rem;
+  animation: wiki-pulse 1.4s ease-in-out infinite;
+}
+.wiki-loading-title {
+  height: 1.75rem;
+  width: 60%;
+  margin-bottom: 0.75rem;
+}
+.wiki-loading-meta {
+  height: 0.875rem;
+  width: 40%;
+  margin-bottom: 1.5rem;
+}
+.wiki-loading-line {
+  height: 0.875rem;
+  margin-bottom: 0.6rem;
+}
+.wiki-loading-line.short {
+  width: 70%;
+}
+@keyframes wiki-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============================================================
+   标签胶囊：详情页头部 + 列表项色点 + 标签页卡片
+   ============================================================ */
+.wiki-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+.wiki-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  border: 1px solid color-mix(in oklab, var(--foreground, #333) 22%, transparent);
+  color: var(--foreground, inherit);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.wiki-tag-hash {
+  opacity: 0.55;
+  margin-right: 0.1rem;
+}
+.wiki-tag-md {
+  font-size: 0.8rem;
+  padding: 0.18rem 0.65rem;
+}
+.wiki-tag-sm {
+  font-size: 0.7rem;
+  padding: 0 0.4rem;
+}
+/* 描边样式（默认）：透明背景，hover 变实心 */
+.wiki-tag-outline {
+  background: transparent;
+}
+.wiki-tag-outline:hover {
+  background: color-mix(in oklab, var(--foreground, #333) 12%, transparent);
+  border-color: color-mix(in oklab, var(--foreground, #333) 45%, transparent);
+}
+/* 实心样式（标签页当前标签）：强调色背景 */
+.wiki-tag-solid {
+  background: var(--primary, #3b82f6);
+  color: var(--background, #fff);
+  border-color: transparent;
+  font-size: 1rem;
+  padding: 0.3rem 0.9rem;
+}
+.wiki-tag-solid .wiki-tag-hash {
+  opacity: 0.7;
+}
+
+/* 左侧栏列表项标签色点 */
+.wiki-post-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.wiki-post-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wiki-tag-dots {
+  display: inline-flex;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+.wiki-tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary, #3b82f6);
+  opacity: 0.7;
+}
+
+/* ============================================================
+   标签页 (/tag/[tag]) 样式
+   ============================================================ */
+.wiki-tag-page {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+.wiki-tag-header {
+  margin-bottom: 2rem;
+}
+.wiki-tag-breadcrumb {
+  font-size: 0.85rem;
+  opacity: 0.7;
+  margin-bottom: 0.75rem;
+}
+.wiki-tag-crumb {
+  color: inherit;
+  text-decoration: none;
+}
+.wiki-tag-crumb:hover {
+  text-decoration: underline;
+}
+.wiki-tag-sep {
+  margin: 0 0.4rem;
+  opacity: 0.6;
+}
+.wiki-tag-title {
+  margin: 0.5rem 0;
+}
+.wiki-tag-count {
+  font-size: 0.875rem;
+  opacity: 0.7;
+  margin-top: 0.5rem;
+}
+.wiki-tag-empty {
+  padding: 3rem 1rem;
+  text-align: center;
+  opacity: 0.6;
+}
+.wiki-tag-post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.wiki-tag-post-card {
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  border-radius: 0.6rem;
+  padding: 1rem 1.25rem;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.wiki-tag-post-card:hover {
+  border-color: var(--primary, #3b82f6);
+  transform: translateY(-1px);
+}
+.wiki-tag-post-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+.wiki-tag-post-title-link:hover .wiki-tag-post-title {
+  text-decoration: underline;
+}
+.wiki-tag-post-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.4rem;
+}
+.wiki-tag-post-summary {
+  font-size: 0.875rem;
+  opacity: 0.8;
+  margin: 0 0 0.5rem;
+  line-height: 1.5;
+}
+.wiki-tag-post-meta {
+  font-size: 0.75rem;
+  opacity: 0.65;
+  margin-bottom: 0.5rem;
+}
+.wiki-tag-post-sep {
+  margin: 0 0.35rem;
+}
+
+/* ============================================================
+   搜索下拉弹层（跨栏目搜索结果）
+   ============================================================ */
+.wiki-search-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.wiki-search-empty {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+.wiki-search-hit-list {
+  list-style: none;
+  padding: 0.25rem;
+  margin: 0;
+}
+.wiki-search-hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  color: var(--foreground, inherit);
+  transition: background 0.12s;
+}
+.wiki-search-hit:hover,
+.wiki-search-hit.is-active {
+  background: var(--surface-muted, rgba(0, 0, 0, 0.05));
+}
+.wiki-search-hit-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wiki-search-hit-meta {
+  font-size: 0.7rem;
+  opacity: 0.65;
+  margin-bottom: 0.2rem;
+}
+.wiki-search-hit-sep {
+  margin: 0 0.3rem;
+  opacity: 0.5;
+}
+.wiki-search-hit-summary {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wiki-search-hit mark {
+  background: color-mix(in oklab, var(--primary, #3b82f6) 25%, transparent);
+  color: inherit;
+  padding: 0 0.1rem;
+  border-radius: 0.15rem;
+}
+.wiki-search-hit-count {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.7rem;
+  opacity: 0.55;
+  border-top: 1px solid var(--border, rgba(0, 0, 0, 0.06));
+  text-align: center;
+}
+
 /* rehype-pretty-code / code block UI */
 .rehype-pretty-code,
 [data-rehype-pretty-code-figure] {
@@ -265,25 +593,25 @@ html {
 .rehype-pretty-code pre,
 [data-rehype-pretty-code-figure] pre {
   margin: 0;
-  padding: 1rem 1rem 1rem 3.6rem; /* leave space for line numbers */
+  padding: 1rem 1rem 1rem 3.75rem; /* leave space for line numbers */
   overflow: auto;
   font-family: var(--font-geist-mono), "Fira Code", Consolas, monospace;
   font-size: 0.88rem;
   line-height: 1.6;
   counter-reset: line; /* CSS counter 自动生成行号，不依赖 JS */
 }
-.rehype-pretty-code > code,
-[data-rehype-pretty-code-figure] > code {
+/* 修复：原 `> code` 选择器失效（实际 DOM 是 figure > pre > code），改为后代选择器 */
+.rehype-pretty-code pre code,
+[data-rehype-pretty-code-figure] pre code {
   display: block;
   margin: 0;
-  padding: 1rem 1rem 1rem 3.6rem;
-  overflow: auto;
-  font-family: var(--font-geist-mono), "Fira Code", Consolas, monospace;
-  font-size: 0.88rem;
-  line-height: 1.6;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
   white-space: pre;
-  background: var(--code-bg);
-  color: var(--code-fg);
 }
 /* rehype-pretty-code 输出 <span data-line=""> 包裹每一行；
    用 CSS counter 自动编号，避免 React 重新渲染覆盖 JS 设置的属性 */
@@ -293,12 +621,17 @@ html {
   padding-right: 1rem;
   position: relative;
   counter-increment: line;
+  white-space: pre; /* 长行不换行，触发 pre 横向滚动而非内部 wrap */
 }
 .rehype-pretty-code [data-line]::before,
 [data-rehype-pretty-code-figure] [data-line]::before {
   content: counter(line);
   position: absolute;
-  left: 1rem;
+  /* 关键修复：用负 left 把行号定位到 pre 的 padding-left 区域，
+     避免 [data-line] 内部的代码文字与行号重叠。
+     pre padding-left = 3.75rem (60px)；行号 left=-3rem，width=2.2rem，
+     右边界 = -3 + 2.2 = -0.8rem（仍在 [data-line] 左边界左侧 0.8rem 处，留出 0.8rem 间隙） */
+  left: -3rem;
   width: 2.2rem;
   text-align: right;
   color: #6b7280;
@@ -337,7 +670,18 @@ html {
 /* mobile adjustments */
 @media (max-width: 640px) {
   .rehype-pretty-code pre,
-  [data-rehype-pretty-code-figure] pre { padding-left: 3rem; font-size: 0.78rem; }
+  [data-rehype-pretty-code-figure] pre {
+    padding-left: 2.5rem; /* 与 639px 档统一 */
+    font-size: 0.78rem;
+  }
+  .rehype-pretty-code [data-line]::before,
+  [data-rehype-pretty-code-figure] [data-line]::before {
+    /* 负 left：pre padding-left=2.5rem，行号 left=-2rem，width=1.6rem，
+       右边界 = -2 + 1.6 = -0.4rem（留出 0.4rem 间隙） */
+    left: -2rem;
+    width: 1.6rem;
+    font-size: 0.75rem;
+  }
   .code-toolbar { top: 0.25rem; right: 0.25rem; }
 }
 
@@ -579,7 +923,7 @@ html {
   }
   .rehype-pretty-code [data-line]::before,
   [data-rehype-pretty-code-figure] [data-line]::before {
-    left: 0.5rem;
+    left: -2rem; /* 负值定位到 pre padding-left 区域 */
     width: 1.6rem;
     font-size: 0.75rem;
   }

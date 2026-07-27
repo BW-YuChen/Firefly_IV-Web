@@ -2,6 +2,7 @@
 // 动态加载由 content-collections 生成的内容，避免在部署时因生成文件缺失导致构建崩溃
 import { SITE_COLUMNS } from "../site-structure";
 import type { ColumnName } from "../site-structure";
+import GithubSlugger from "github-slugger";
 
 type GeneratedPost = any;
 export type Post = GeneratedPost;
@@ -17,6 +18,43 @@ export type PostMeta = {
     category: string;
     weight: number;
 };
+
+// 文章标题项（用于 TOC）；与服务端 extractHeadings 输出一致
+export type HeadingItem = {
+    id: string;
+    level: number;
+    text: string;
+};
+
+// 从 markdown 原文提取标题列表（服务端预算，避免客户端重复解析）
+// 用 GithubSlugger 生成 id，与 rehype-slug 编译时生成、wiki-shell 客户端回退逻辑完全一致
+// 用 /\r?\n/ 分割，兼容 Windows (\r\n) 和 Unix (\n) 换行符
+export function extractHeadings(markdown: string): HeadingItem[] {
+    const slugger = new GithubSlugger();
+    const lines = markdown.split(/\r?\n/);
+    const result: HeadingItem[] = [];
+    for (const line of lines) {
+        const match = line.match(/^(#{1,6})\s+(.+)$/);
+        if (!match) continue;
+        const level = match[1].length;
+        const text = match[2].trim();
+        const id = slugger.slug(text);
+        result.push({ id, level, text });
+    }
+    return result;
+}
+
+// 获取全站所有不重复标签（用于 /tag/[tag] 路由的 generateStaticParams）
+export async function getAllTags(): Promise<string[]> {
+    const posts = await getAllPosts();
+    const tags = new Set<string>();
+    for (const p of posts) {
+        if (Array.isArray(p.tags)) {
+            for (const t of p.tags) tags.add(String(t));
+        }
+    }
+    return Array.from(tags);
+}
 
 export { SITE_COLUMNS };
 

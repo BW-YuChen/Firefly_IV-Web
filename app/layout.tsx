@@ -21,6 +21,25 @@ export const metadata: Metadata = {
   },
 };
 
+// 全局主题初始化脚本：在 React hydration 之前同步执行，
+// 读取 localStorage 决定 data-theme，避免 FOUC（首屏闪烁）
+// 同时为所有路由（/blog、/tag 等）提供一致的全局主题
+const themeInitScript = `
+(function() {
+  try {
+    var k = 'wiki-theme';
+    var s = localStorage.getItem(k);
+    if (!s) {
+      // 首次访问：跟随系统偏好
+      s = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.dataset.theme = s;
+  } catch (e) {
+    document.documentElement.dataset.theme = 'light';
+  }
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,6 +51,9 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
