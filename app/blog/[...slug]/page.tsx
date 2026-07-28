@@ -26,7 +26,9 @@ export async function generateStaticParams() {
 
 export default async function PostPage({ params }: PageProps) {
     const { slug } = await params;
-    const slugPath = slug.join("/");
+    // 解码 URL 参数：Next.js 的 params.slug 元素是 URL 编码的（中文会变成 %XX）
+    // 解码后与 metas 中的 slug（来自 _meta.path，未编码）一致
+    const slugPath = decodeURIComponent(slug.join("/"));
     const [metas, post] = await Promise.all([getPostMetas(), getPostBySlug(slugPath)]);
 
     if (!post) {

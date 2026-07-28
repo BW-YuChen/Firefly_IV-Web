@@ -21,6 +21,16 @@ import type { CSSProperties } from "react";
 import type { ColumnName, PostMeta } from "@/lib/content";
 import { TagList } from "./tag-list";
 import { SearchPopover, type SearchHit } from "./search-popover";
+import { ViewCount } from "./view-count";
+
+// 模块级变量：记录上次渲染的栏目（客户端导航跨页面保留）
+// 用于判断是否为同栏目下的文章切换，同栏目切换时禁用模块淡入动画
+let lastRenderedColumn: ColumnName | null = null;
+
+// 模块级变量：待处理的搜索关键词（客户端导航跨页面保留）
+// handleNavigateFromSearch 设置后跳转，新页面挂载后 useSearchHighlight 读取并清除
+// 避免依赖 useSearchParams（在 force-static 页面可能触发 Suspense）
+let pendingSearchQuery: string | null = null;
 
 // ============================================================
 // 类型定义
@@ -238,7 +248,7 @@ function useScrollSpy(itemIds: string[], offset = 120) {
 // ============================================================
 
 function useCodeBlockUI(
-  contentRef: React.RefObject<HTMLDivElement | null>,
+  contentRef: React.RefObject<HTMLElement | null>,
   deps: Array<string>
 ) {
   useEffect(() => {
@@ -312,6 +322,268 @@ function useCodeBlockUI(
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
+}
+
+// ============================================================
+// 搜索关键字定位与闪烁
+// 在 container 内文本节点中查找所有命中位置，包裹 <mark class="search-flash">
+// 滚动到第一个命中位置，动画结束后自动清理 mark 元素
+// 支持多关键词（空格分隔）：每个词都高亮，命中任一即闪烁
+// ============================================================
+
+// 在单个文本节点内查找所有命中位置并包裹 mark
+function wrapTextNodeMarks(text: string, terms: string[]): { fragment: DocumentFragment; marks: HTMLElement[] } {
+  const fragment = document.createDocumentFragment();
+  const lowerText = text.toLowerCase();
+  // 找出所有命中区间 [start, end)
+  const ranges: Array<{ start: number; end: number }> = [];
+  for (const term of terms) {
+    const lowerTerm = term.toLowerCase();
+    let idx = lowerText.indexOf(lowerTerm);
+    while (idx !== -1) {
+      ranges.push({ start: idx, end: idx + term.length });
+      idx = lowerText.indexOf(lowerTerm, idx + term.length);
+    }
+  }
+  if (ranges.length === 0) {
+    fragment.appendChild(document.createTextNode(text));
+    return { fragment, marks: [] };
+  }
+  // 按起始位置排序，合并重叠区间
+  ranges.sort((a, b) => a.start - b.start);
+  const merged: Array<{ start: number; end: number }> = [];
+  for (const r of ranges) {
+    const last = merged[merged.length - 1];
+    if (last && r.start <= last.end) {
+      last.end = Math.max(last.end, r.end);
+    } else {
+      merged.push({ ...r });
+    }
+  }
+  const marks: HTMLElement[] = [];
+  let cursor = 0;
+  for (const r of merged) {
+    if (r.start > cursor) {
+      fragment.appendChild(document.createTextNode(text.slice(cursor, r.start)));
+    }
+    // 用 span 代替 mark，避免浏览器/Tailwind 对 mark 元素的特殊处理导致样式不可见
+    const mark = document.createElement("span");
+    mark.className = "search-flash";
+    mark.textContent = text.slice(r.start, r.end);
+    fragment.appendChild(mark);
+    marks.push(mark);
+    cursor = r.end;
+  }
+  if (cursor < text.length) {
+    fragment.appendChild(document.createTextNode(text.slice(cursor)));
+  }
+  return { fragment, marks };
+}
+
+function highlightInPlace(container: HTMLElement | null, rawTerm: string): boolean {
+  if (!container || !rawTerm) return false;
+  // 多关键词：按空白分隔，过滤空串
+  const terms = rawTerm.split(/\s+/).map((t) => t.trim()).filter(Boolean);
+  if (terms.length === 0) return false;
+
+  // 先清理已有的 mark，避免重复包裹
+  container.querySelectorAll(".search-flash").forEach((mark) => {
+    const parent = mark.parentNode;
+    if (!parent) return;
+    const textNode = document.createTextNode(mark.textContent ?? "");
+    parent.replaceChild(textNode, mark);
+    parent.normalize();
+  });
+
+  // 判断节点是否应跳过（代码块、script、style、input 等）
+  const shouldSkip = (node: Text): boolean => {
+    let parent: Element | null = node.parentElement;
+    while (parent && parent !== container) {
+      const tag = parent.tagName;
+      if (tag === "CODE" || tag === "PRE" || tag === "SCRIPT" || tag === "STYLE" || tag === "INPUT" || tag === "TEXTAREA") {
+        return true;
+      }
+      parent = parent.parentElement;
+    }
+    return false;
+  };
+
+  const lowerTerms = terms.map((t) => t.toLowerCase());
+  const marks: HTMLElement[] = [];
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      if (!(node instanceof Text)) return NodeFilter.FILTER_REJECT;
+      const text = node.nodeValue ?? "";
+      if (!text) return NodeFilter.FILTER_REJECT;
+      if (shouldSkip(node)) return NodeFilter.FILTER_REJECT;
+      const lowerText = text.toLowerCase();
+      // 任一关键词命中即接受
+      for (const lt of lowerTerms) {
+        if (lowerText.includes(lt)) return NodeFilter.FILTER_ACCEPT;
+      }
+      return NodeFilter.FILTER_REJECT;
+    },
+  });
+
+  const textNodes: Text[] = [];
+  let current = walker.nextNode();
+  while (current) {
+    if (current instanceof Text) textNodes.push(current);
+    current = walker.nextNode();
+  }
+
+  // 内联样式常量：插入 DOM 前设置，避免 transition 导致淡入
+  const HIGHLIGHT_STYLE = [
+    "background-color: #f59e0b",
+    "color: #ffffff",
+    "padding: 2px 4px",
+    "border-radius: 3px",
+    "box-shadow: 0 0 0 2px rgba(245,158,11,0.5)",
+    "font-weight: bold",
+  ].join("; ");
+
+  for (const textNode of textNodes) {
+    const text = textNode.nodeValue ?? "";
+    const { fragment, marks: nodeMarks } = wrapTextNodeMarks(text, terms);
+    if (nodeMarks.length > 0) {
+      // 插入 DOM 前设置内联样式，确保高亮立即可见（无 transition 淡入）
+      nodeMarks.forEach((m) => { m.style.cssText = HIGHLIGHT_STYLE; });
+      textNode.parentNode?.replaceChild(fragment, textNode);
+      marks.push(...nodeMarks);
+    }
+  }
+
+  if (marks.length === 0) {
+    return false;
+  }
+
+  // 第一个匹配项设置 id 用于滚动定位
+  marks[0].id = "search-flash-first";
+
+  // 延迟滚动：确保 span 已插入 DOM 并完成布局
+  // 同时避免 scrollIntoView 触发 useScrollSpy → setActiveId → 重渲染干扰
+  setTimeout(() => {
+    const first = container.querySelector("#search-flash-first") as HTMLElement | null;
+    if (first) {
+      first.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, 150);
+
+  // 3s 后清理 span 元素（恢复为纯文本节点）
+  const cleanup = () => {
+    const firstEl = container.querySelector("#search-flash-first");
+    if (firstEl) firstEl.removeAttribute("id");
+    const marksInDom = container.querySelectorAll(".search-flash");
+    marksInDom.forEach((mark) => {
+      const parent = mark.parentNode;
+      if (!parent) return;
+      const textNode = document.createTextNode(mark.textContent ?? "");
+      parent.replaceChild(textNode, mark);
+      parent.normalize();
+    });
+  };
+  setTimeout(cleanup, 3000);
+  return true;
+}
+
+// ============================================================
+// 自定义 hook：搜索关键字定位与闪烁
+// 优先从 module-level 变量 pendingSearchQuery 获取搜索词（客户端导航）
+// 回退到 URL ?q= 参数（直接访问/刷新）
+// 用 setTimeout 轮询重试，确保 MDX 内容渲染完成后再查找
+// ============================================================
+
+function useSearchHighlight(
+  contentRef: React.RefObject<HTMLElement | null>,
+  slug: string
+) {
+  useEffect(() => {
+    // 优先从 module-level 变量获取，回退到 URL 参数
+    let term: string | null = pendingSearchQuery;
+    pendingSearchQuery = null; // 读后清除，避免重复触发
+
+    if (!term && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      term = params.get("q");
+    }
+    if (!term) return;
+
+    // 从 URL 移除 ?q= 参数，避免刷新或分享时重复闪烁
+    const cleanupUrl = () => {
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("q")) {
+          url.searchParams.delete("q");
+          window.history.replaceState(null, "", url.pathname + (url.hash || ""));
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let observer: MutationObserver | null = null;
+    let done = false;
+
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (observer) { observer.disconnect(); observer = null; }
+      cleanupUrl();
+    };
+
+    const attempt = (): boolean => {
+      if (cancelled || done) return false;
+      const container = contentRef.current;
+      if (!container) return false;
+      // 容器必须有实际内容才尝试（避免空 DOM）
+      if (container.textContent && container.textContent.trim().length > 0) {
+        return highlightInPlace(container, term!);
+      }
+      return false;
+    };
+
+    // 立即尝试一次（同页搜索时容器已就绪）
+    if (attempt()) {
+      finish();
+      return () => {};
+    }
+
+    // 未就绪：用 MutationObserver 监听 container 子树变化，一旦有内容就尝试
+    const container = contentRef.current;
+    if (container && typeof MutationObserver !== "undefined") {
+      observer = new MutationObserver(() => {
+        if (attempt()) finish();
+      });
+      observer.observe(container, { childList: true, subtree: true, characterData: true });
+    }
+
+    // 兜底：定时轮询，防止 MutationObserver 未触发
+    let attemptsLeft = 40; // 40 * 100ms = 4s
+    const poll = () => {
+      if (cancelled || done) return;
+      if (attempt()) {
+        finish();
+        return;
+      }
+      attemptsLeft--;
+      if (attemptsLeft > 0) {
+        timer = setTimeout(poll, 100);
+      } else {
+        // 超时仍未找到，放弃
+        finish();
+      }
+    };
+    timer = setTimeout(poll, 100);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      if (observer) observer.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
 }
 
 // ============================================================
@@ -591,6 +863,11 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
   const activeColumn: ColumnName = selectedPost.column;
   const buildPostHref = (slug: string) => `/blog/${slug}`;
 
+  // 判断是否为同栏目下的文章切换：与上次渲染栏目相同则禁用模块淡入动画
+  // 首次进入（含开屏跳转、硬刷新）或跨栏目切换时保留淡入动画
+  const isSameColumnNav = lastRenderedColumn === activeColumn;
+  lastRenderedColumn = activeColumn;
+
   // 搜索：独立跨栏目过滤，不再驱动左侧栏分组
   // 左侧栏始终展示完整 metas（按 activeColumn 过滤），搜索结果通过下拉弹层展示
   const [searchOpen, setSearchOpen] = useState(false);
@@ -598,24 +875,49 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
   const router = useRouter();
 
   const searchHits = useMemo<SearchHit[]>(() => {
-    const q = keyword.trim().toLowerCase();
+    const rawQ = keyword.trim();
+    const q = rawQ.toLowerCase();
     if (!q) return [];
+    // 从正文匹配位置生成上下文片段，用于搜索结果显示
+    const makeSnippet = (text: string, radius = 30): string => {
+      const lower = text.toLowerCase();
+      const idx = lower.indexOf(q);
+      if (idx === -1) return "";
+      const start = Math.max(0, idx - radius);
+      const end = Math.min(text.length, idx + q.length + radius);
+      const prefix = start > 0 ? "…" : "";
+      const suffix = end < text.length ? "…" : "";
+      return prefix + text.slice(start, end).trim() + suffix;
+    };
     return metas
       .filter((post) => {
         const title = post.title.toLowerCase();
         const summary = (post.summary ?? "").toLowerCase();
         const tags = (post.tags ?? []).join(" ").toLowerCase();
-        return title.includes(q) || summary.includes(q) || tags.includes(q);
+        const searchText = (post.searchText ?? "").toLowerCase();
+        return title.includes(q) || summary.includes(q) || tags.includes(q) || searchText.includes(q);
       })
-      .map((p) => ({
-        slug: p.slug,
-        title: p.title,
-        summary: p.summary,
-        column: p.column,
-        category: p.category,
-        tags: p.tags,
-      }));
-  }, [keyword, metas]);
+      .map((p) => {
+        // 优先显示 summary；若 summary 未命中但正文命中，则生成正文片段
+        const summaryHit = (p.summary ?? "").toLowerCase().includes(q);
+        const snippet = !summaryHit ? makeSnippet(p.searchText ?? "") : undefined;
+        return {
+          slug: p.slug,
+          title: p.title,
+          summary: p.summary,
+          snippet,
+          column: p.column,
+          category: p.category,
+          tags: p.tags,
+        };
+      })
+      // 当前文章优先显示，方便在当前页内继续查找其他命中位置
+      .sort((a, b) => {
+        const aCurrent = a.slug === selectedPost.slug ? 0 : 1;
+        const bCurrent = b.slug === selectedPost.slug ? 0 : 1;
+        return aCurrent - bCurrent;
+      });
+  }, [keyword, metas, selectedPost.slug]);
 
   // 当搜索词变化时重置活动项并开关弹层
   useEffect(() => {
@@ -623,7 +925,7 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
     setSearchOpen(keyword.trim().length > 0);
   }, [keyword]);
 
-  // 键盘导航：↑↓ 移动、Enter 跳转、Esc 关闭
+  // 键盘导航：↑↓ 移动、Enter 直接命中第一个、Esc 关闭
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -633,8 +935,9 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
       e.preventDefault();
       setActiveHitIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === "Enter") {
+      // 直接命中第一个匹配项；没有则不做操作
       if (searchHits.length > 0) {
-        const hit = searchHits[Math.min(activeHitIndex, searchHits.length - 1)];
+        const hit = searchHits[0];
         if (hit) handleNavigateFromSearch(hit.slug);
       }
     } else if (e.key === "Escape") {
@@ -644,10 +947,27 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
   };
 
   const handleNavigateFromSearch = (slug: string) => {
+    const q = keyword.trim();
     setSearchOpen(false);
     setKeyword("");
     setActiveHitIndex(0);
-    router.push(buildPostHref(slug));
+    if (!q) return;
+    // 同页搜索：直接用 setTimeout 在 React 状态更新和 DOM 提交后执行高亮
+    // 不依赖 useLayoutEffect/useEffect，避免 React 渲染周期导致 timer 被清理
+    // 延迟 100ms 确保 React 完成 DOM 提交后再操作
+    if (slug === selectedPost.slug) {
+      setTimeout(() => {
+        const container = contentRef.current;
+        if (container) {
+          highlightInPlace(container, q);
+        }
+      }, 100);
+      return;
+    }
+    // 跨页跳转
+    pendingSearchQuery = q;
+    const href = `${buildPostHref(slug)}?q=${encodeURIComponent(q)}`;
+    router.push(href);
   };
 
   // 栏目 → 分类 → 文章 分组与排序（基于全量 metas，不再被搜索过滤）
@@ -717,8 +1037,10 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
   const tocIds = useMemo(() => tocItems.map((item) => item.id), [tocItems]);
   const activeTocId = useScrollSpy(tocIds);
 
-  const contentRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLElement | null>(null);
   useCodeBlockUI(contentRef, [selectedPost.slug, selectedPost.code]);
+  // 搜索跳转后定位并闪烁：从 pendingSearchQuery 或 URL ?q= 读取关键字
+  useSearchHighlight(contentRef, selectedPost.slug);
 
   // 折叠处理函数
   const toggleColumn = (column: string) =>
@@ -745,7 +1067,7 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
   };
 
   return (
-    <div className="wiki-shell min-h-screen">
+    <div className={`wiki-shell min-h-screen ${isSameColumnNav ? "no-module-fade" : ""}`}>
       {/* ============ 顶部导航栏 ============ */}
       <header className="wiki-topbar sticky top-0 z-50 border-b">
         <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-3 px-4">
@@ -797,6 +1119,7 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
                 hits={searchHits}
                 open={searchOpen}
                 activeIndex={activeHitIndex}
+                currentSlug={selectedPost.slug}
                 onNavigate={handleNavigateFromSearch}
                 onClose={() => setSearchOpen(false)}
               />
@@ -851,15 +1174,15 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
       )}
 
       {/* ============ 三栏主体布局 ============ */}
-      <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
+      <div className="wiki-main-grid mx-auto grid max-w-[1600px] grid-cols-1 gap-6 p-6 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
         {/* 桌面端左侧栏 */}
-        <aside className="wiki-sidebar hidden border-r p-4 lg:block">
+        <aside className="wiki-sidebar hidden p-5 lg:block">
           <ColumnCategoryList {...columnListProps} variant="desktop" />
         </aside>
 
         {/* 中间内容区 */}
-        <main className="wiki-content min-h-[calc(100vh-56px)] px-4 py-6 lg:px-10 lg:py-8">
-          <article className="mx-auto max-w-4xl">
+        <main className="wiki-content min-h-[calc(100vh-56px)] px-6 py-8 lg:px-12 lg:py-10">
+          <article ref={contentRef} key={selectedPost.slug} className="mx-auto max-w-3xl">
             <h1 className="mb-5 text-3xl font-semibold tracking-tight lg:text-4xl">
               {selectedPost.title}
             </h1>
@@ -872,6 +1195,8 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
               <span>{selectedPost.column}</span>
               <span>•</span>
               <span>{selectedPost.category}</span>
+              <span>•</span>
+              <ViewCount slug={selectedPost.slug} />
             </div>
 
             {selectedPost.tags && selectedPost.tags.length > 0 && (
@@ -904,20 +1229,18 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
               )}
             </div>
 
-            <div ref={contentRef} key={selectedPost.slug} className="prose wiki-prose max-w-none">
+            <div className="prose wiki-prose max-w-none">
               <MDXContent code={selectedPost.code} components={mdxComponents} />
             </div>
           </article>
         </main>
 
         {/* 桌面端右侧目录 */}
-        <aside className="wiki-toc hidden border-l p-4 lg:block">
-          <div className="sticky top-20">
-            <h2 className="mb-2 text-base font-semibold">目录</h2>
-            <ul className="space-y-1 text-sm">
-              <TocList items={tocItems} activeId={activeTocId} />
-            </ul>
-          </div>
+        <aside className="wiki-toc hidden p-5 lg:block">
+          <h2 className="mb-2 text-base font-semibold">目录</h2>
+          <ul className="space-y-1 text-sm">
+            <TocList items={tocItems} activeId={activeTocId} />
+          </ul>
         </aside>
       </div>
 

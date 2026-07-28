@@ -17,7 +17,45 @@ export type PostMeta = {
     column: ColumnName;
     category: string;
     weight: number;
+    // 预处理后的纯文本（去掉 markdown 语法、代码块，保留正文和数学公式内容）
+    // 用于客户端全文搜索，覆盖普通文字、数学公式、符号等
+    searchText?: string;
 };
+
+// 预处理 markdown 为纯文本，用于搜索索引
+// - 去掉代码块（```...```）和行内代码（`...`）：代码通常不需要被搜索
+// - 去掉图片语法 ![alt](src)，保留 alt 文本
+// - 去掉链接语法 [text](url)，保留 text
+// - 去掉标题符号 #
+// - 去掉数学公式定界符 $，保留公式内容（如 $f(p)$ -> f(p)）
+// - 去掉加粗/斜体语法符号，保留文本
+// 保留普通文本和数学公式内容，使搜索能覆盖到正文字符和公式符号
+export function buildSearchText(markdown: string): string {
+    if (!markdown) return "";
+    return markdown
+        // 去掉 frontmatter（如果存在）
+        .replace(/^---[\s\S]*?---\n/, "")
+        // 去掉代码块（```...``` 或 ~~~...~~~）
+        .replace(/```[\s\S]*?```/g, " ")
+        .replace(/~~~[\s\S]*?~~~/g, " ")
+        // 去掉行内代码（`...`）
+        .replace(/`[^`]+`/g, " ")
+        // 去掉图片语法 ![alt](src)，保留 alt 文本
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+        // 去掉链接语法 [text](url)，保留 text
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+        // 去掉标题符号 #
+        .replace(/^#{1,6}\s+/gm, "")
+        // 去掉数学公式定界符 $$ 和 $，保留公式内容
+        .replace(/\$\$/g, " ")
+        .replace(/\$/g, " ")
+        // 去掉加粗/斜体语法符号，保留文本
+        .replace(/\*\*([^*]*)\*\*/g, "$1")
+        .replace(/__([^_]*)__/g, "$1")
+        // 压缩空白
+        .replace(/\s+/g, " ")
+        .trim();
+}
 
 // 文章标题项（用于 TOC）；与服务端 extractHeadings 输出一致
 export type HeadingItem = {
@@ -153,6 +191,7 @@ export async function getPostMetas(): Promise<PostMeta[]> {
         column: (post.column as ColumnName) ?? deriveColumnFromPath(post._meta?.path),
         category: post.category ?? "默认分类",
         weight: post.weight ?? 0,
+        searchText: buildSearchText(post.content ?? ""),
     }));
 }
 

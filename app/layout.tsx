@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Noto_Serif_SC, Noto_Sans_SC, Orbitron } from "next/font/google";
 import "katex/dist/katex.min.css";
 import "./globals.css";
+import { MeteorBackground } from "./components/meteor-background";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -11,6 +12,30 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// Orbitron：科幻几何字体，用于开屏主标题与品牌标识（SIL OFL 1.1 开源协议）
+const orbitron = Orbitron({
+  variable: "--font-orbitron",
+  subsets: ["latin"],
+  weight: ["500", "700", "900"],
+  display: "swap",
+});
+
+// 思源宋体：正文阅读（SIL OFL 1.1 开源协议，无版权风险）
+const notoSerif = Noto_Serif_SC({
+  variable: "--font-serif-sc",
+  subsets: ["chinese-simplified"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+});
+
+// 思源黑体：标题层级（SIL OFL 1.1 开源协议，无版权风险）
+const notoSans = Noto_Sans_SC({
+  variable: "--font-sans-sc",
+  subsets: ["chinese-simplified"],
+  weight: ["400", "500", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -34,6 +59,10 @@ const themeInitScript = `
       s = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
     document.documentElement.dataset.theme = s;
+    // 精细指针设备启用自定义光标（SVG data URI，见 globals.css）
+    if (window.matchMedia('(pointer: fine)').matches) {
+      document.documentElement.classList.add('use-ani-cursor');
+    }
   } catch (e) {
     document.documentElement.dataset.theme = 'light';
   }
@@ -49,12 +78,15 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${notoSerif.variable} ${notoSans.variable} ${orbitron.variable} h-full antialiased`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <MeteorBackground />
+        {children}
+      </body>
     </html>
   );
 }

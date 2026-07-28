@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { SplashScreen } from "./components/splash-screen";
 
 export default function Home() {
-  redirect(encodeURI("/blog/Welcome/首页/welcome"));
+    return <SplashScreen />;
 }

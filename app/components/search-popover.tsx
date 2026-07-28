@@ -6,6 +6,8 @@ export type SearchHit = {
     slug: string;
     title: string;
     summary?: string;
+    // 正文匹配片段（当 title/summary 未命中但正文命中时显示）
+    snippet?: string;
     column: string;
     category: string;
     tags?: string[];
@@ -16,6 +18,7 @@ type Props = {
     hits: SearchHit[];
     open: boolean;
     activeIndex: number;
+    currentSlug?: string;
     onNavigate: (slug: string) => void;
     onClose: () => void;
 };
@@ -26,14 +29,17 @@ function escapeRegExp(s: string): string {
 }
 
 // 高亮匹配关键词：把文本按命中位置切分，匹配部分包裹 <mark>
+// 注意：不能用带 g flag 的正则做 re.test(part)，lastIndex 会导致结果不一致
+// split 已按匹配位置切分，匹配片段就是关键词本身，直接用字符串比较即可
 function highlight(text: string, query: string): React.ReactNode {
     const q = query.trim();
     if (!q) return text;
     const escaped = escapeRegExp(q);
     const re = new RegExp(`(${escaped})`, "ig");
     const parts = text.split(re);
+    const lowerQ = q.toLowerCase();
     return parts.map((part, i) =>
-        re.test(part) && part.toLowerCase() === q.toLowerCase() ? (
+        part.toLowerCase() === lowerQ ? (
             <mark key={i}>{part}</mark>
         ) : (
             <span key={i}>{part}</span>
@@ -52,6 +58,7 @@ export function SearchPopover({
     hits,
     open,
     activeIndex,
+    currentSlug,
     onNavigate,
     onClose,
 }: Props) {
@@ -111,17 +118,24 @@ export function SearchPopover({
                                 >
                                     <div className="wiki-search-hit-title">
                                         {highlight(hit.title, query)}
+                                        {hit.slug === currentSlug && (
+                                            <span className="wiki-search-hit-current">当前页</span>
+                                        )}
                                     </div>
                                     <div className="wiki-search-hit-meta">
                                         <span>{hit.column}</span>
                                         <span className="wiki-search-hit-sep">/</span>
                                         <span>{hit.category}</span>
                                     </div>
-                                    {hit.summary && (
+                                    {hit.snippet ? (
+                                        <div className="wiki-search-hit-summary">
+                                            {highlight(hit.snippet, query)}
+                                        </div>
+                                    ) : hit.summary ? (
                                         <div className="wiki-search-hit-summary">
                                             {highlight(truncate(hit.summary, 60), query)}
                                         </div>
-                                    )}
+                                    ) : null}
                                 </button>
                             </li>
                         ))}
