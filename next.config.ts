@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
 		// 设备尺寸断点，next/image 据此生成响应式 srcset
 		deviceSizes: [640, 750, 828, 1080, 1200, 1920],
 		imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+		// 允许的 quality 值列表（背景图使用 90 保持视觉无损）
+		qualities: [75, 90],
 		// AVIF 编码略慢但只算一次，缓存 1 小时
 		minimumCacheTTL: 3600,
 	},

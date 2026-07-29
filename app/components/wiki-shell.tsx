@@ -16,16 +16,12 @@ import {
   Sun,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useRef } from "react";
 import type { CSSProperties } from "react";
 import type { ColumnName, PostMeta } from "@/lib/content";
 import { TagList } from "./tag-list";
 import { SearchPopover, type SearchHit } from "./search-popover";
 import { ViewCount } from "./view-count";
-
-// 模块级变量：记录上次渲染的栏目（客户端导航跨页面保留）
-// 用于判断是否为同栏目下的文章切换，同栏目切换时禁用模块淡入动画
-let lastRenderedColumn: ColumnName | null = null;
 
 // 模块级变量：待处理的搜索关键词（客户端导航跨页面保留）
 // handleNavigateFromSearch 设置后跳转，新页面挂载后 useSearchHighlight 读取并清除
@@ -865,8 +861,14 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
 
   // 判断是否为同栏目下的文章切换：与上次渲染栏目相同则禁用模块淡入动画
   // 首次进入（含开屏跳转、硬刷新）或跨栏目切换时保留淡入动画
-  const isSameColumnNav = lastRenderedColumn === activeColumn;
-  lastRenderedColumn = activeColumn;
+  // 使用 useRef + useLayoutEffect 在 paint 前更新 state，
+  // 避免在 render 阶段直接修改 ref 导致 SSR/CSR className 不一致（hydration mismatch）
+  const lastColumnRef = useRef<ColumnName | null>(null);
+  const [isSameColumnNav, setIsSameColumnNav] = useState(false);
+  useLayoutEffect(() => {
+    setIsSameColumnNav(lastColumnRef.current === activeColumn);
+    lastColumnRef.current = activeColumn;
+  }, [activeColumn]);
 
   // 搜索：独立跨栏目过滤，不再驱动左侧栏分组
   // 左侧栏始终展示完整 metas（按 activeColumn 过滤），搜索结果通过下拉弹层展示

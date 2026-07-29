@@ -587,13 +587,14 @@ html {
   max-width: 48rem;
   margin: 0 auto;
   padding: 2rem 1rem;
+  color: var(--foreground);
 }
 .wiki-tag-header {
   margin-bottom: 2rem;
 }
 .wiki-tag-breadcrumb {
   font-size: 0.85rem;
-  opacity: 0.7;
+  color: color-mix(in oklab, var(--foreground) 70%, transparent);
   margin-bottom: 0.75rem;
 }
 .wiki-tag-crumb {
@@ -605,20 +606,20 @@ html {
 }
 .wiki-tag-sep {
   margin: 0 0.4rem;
-  opacity: 0.6;
+  color: color-mix(in oklab, var(--foreground) 50%, transparent);
 }
 .wiki-tag-title {
   margin: 0.5rem 0;
 }
 .wiki-tag-count {
   font-size: 0.875rem;
-  opacity: 0.7;
+  color: color-mix(in oklab, var(--foreground) 70%, transparent);
   margin-top: 0.5rem;
 }
 .wiki-tag-empty {
   padding: 3rem 1rem;
   text-align: center;
-  opacity: 0.6;
+  color: color-mix(in oklab, var(--foreground) 60%, transparent);
 }
 .wiki-tag-post-list {
   list-style: none;
@@ -629,17 +630,23 @@ html {
   gap: 1rem;
 }
 .wiki-tag-post-card {
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  /* 半透明白底卡片：与 wiki-content 风格一致，确保背景图上文字可读 */
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid color-mix(in oklab, var(--border) 45%, transparent);
   border-radius: 0.6rem;
   padding: 1rem 1.25rem;
+  color: var(--foreground);
   transition: border-color 0.15s, transform 0.15s;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 .wiki-tag-post-card:hover {
   border-color: var(--primary, #3b82f6);
   transform: translateY(-1px);
 }
 .wiki-tag-post-title-link {
-  color: inherit;
+  color: var(--foreground);
   text-decoration: none;
 }
 .wiki-tag-post-title-link:hover .wiki-tag-post-title {
@@ -648,21 +655,26 @@ html {
 .wiki-tag-post-title {
   font-size: 1.1rem;
   font-weight: 600;
+  color: var(--foreground);
   margin: 0 0 0.4rem;
 }
 .wiki-tag-post-summary {
   font-size: 0.875rem;
-  opacity: 0.8;
+  color: color-mix(in oklab, var(--foreground) 80%, transparent);
   margin: 0 0 0.5rem;
   line-height: 1.5;
 }
 .wiki-tag-post-meta {
   font-size: 0.75rem;
-  opacity: 0.65;
+  color: color-mix(in oklab, var(--foreground) 65%, transparent);
   margin-bottom: 0.5rem;
 }
 .wiki-tag-post-sep {
   margin: 0 0.35rem;
+}
+[data-theme="dark"] .wiki-tag-post-card {
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.4);
 }
 
 /* ============================================================
