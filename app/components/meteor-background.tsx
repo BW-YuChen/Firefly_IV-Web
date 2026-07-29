@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 
 interface Meteor {
     x: number;
@@ -26,6 +27,7 @@ export function MeteorBackground() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const rafRef = useRef<number>(0);
     const meteorsRef = useRef<Meteor[]>([]);
+    const [bgLoaded, setBgLoaded] = useState(false);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -136,8 +138,21 @@ export function MeteorBackground() {
 
     return (
         <div className="meteor-bg">
-            {/* 背景图：固定定位，cover 填充 */}
-            <div className="meteor-bg-image" />
+            {/* 背景图：next/image 自动转 AVIF/WebP + 响应式 srcset
+                - priority 预加载，避免首次访问等待
+                - sizes="100vw" 按视口宽度生成最优尺寸
+                - quality=90 视觉无损，AVIF 下文件约原图 1/4
+                - 加载淡入由 CSS opacity transition 实现 */}
+            <Image
+                src="/images/background.jpg"
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                quality={90}
+                onLoad={() => setBgLoaded(true)}
+                className={`meteor-bg-image ${bgLoaded ? "is-loaded" : ""}`}
+            />
             {/* 半透明遮罩：确保内容可读性 */}
             <div className="meteor-bg-overlay" />
             {/* Canvas 流星层 */}
