@@ -22,6 +22,8 @@ import type { ColumnName, PostMeta } from "@/lib/content";
 import { TagList } from "./tag-list";
 import { SearchPopover, type SearchHit } from "./search-popover";
 import { ViewCount } from "./view-count";
+import { CommentCount } from "./comment-count";
+import { CommentBox } from "./comment-box";
 
 // 模块级变量：待处理的搜索关键词（客户端导航跨页面保留）
 // handleNavigateFromSearch 设置后跳转，新页面挂载后 useSearchHighlight 读取并清除
@@ -1199,6 +1201,8 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
               <span>{selectedPost.category}</span>
               <span>•</span>
               <ViewCount slug={selectedPost.slug} />
+              <span>•</span>
+              <CommentCount slug={selectedPost.slug} />
             </div>
 
             {selectedPost.tags && selectedPost.tags.length > 0 && (
@@ -1234,6 +1238,9 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
             <div className="prose wiki-prose max-w-none">
               <MDXContent code={selectedPost.code} components={mdxComponents} />
             </div>
+
+            {/* 评论区：Giscus（GitHub Discussions） */}
+            <CommentBox slug={selectedPost.slug} />
           </article>
         </main>
 

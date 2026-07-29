@@ -1319,6 +1319,44 @@ body,
 }
 
 /* ============================================================
+   评论数组件：消息图标 + 数字（与 ViewCount 风格一致）
+   ============================================================ */
+.wiki-comment-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: color-mix(in oklab, var(--foreground) 75%, transparent);
+}
+.wiki-comment-icon {
+  opacity: 0.7;
+}
+
+/* ============================================================
+   评论框组件：Giscus（GitHub Discussions）
+   ============================================================ */
+.wiki-comment-box {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+}
+.wiki-comment-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 1rem;
+}
+.wiki-comment-giscus {
+  min-height: 200px;
+}
+.wiki-comment-giscus iframe {
+  width: 100%;
+  border: none;
+}
+
+/* ============================================================
    自定义鼠标光标：SVG data URI 立绘配色
    - 浅薄荷绿填充 + 深青绿描边的箭头光标
    - 内嵌 SVG，无外部文件依赖，跨浏览器兼容
