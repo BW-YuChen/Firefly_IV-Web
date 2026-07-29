@@ -2,6 +2,17 @@
 
 import { useEffect, useRef } from "react";
 
+interface Meteor {
+    x: number;
+    y: number;
+    len: number;
+    speed: number;
+    angle: number;
+    opacity: number;
+    life: number;
+    maxLife: number;
+}
+
 /**
  * 动态背景组件：固定背景图 + Canvas 流星动画
  *
@@ -30,17 +41,6 @@ export function MeteorBackground() {
             height = canvas.height = window.innerHeight;
         };
         window.addEventListener("resize", resize);
-
-        interface Meteor {
-            x: number;
-            y: number;
-            len: number;
-            speed: number;
-            angle: number;
-            opacity: number;
-            life: number;
-            maxLife: number;
-        }
 
         const spawnMeteor = () => {
             // 从屏幕上方/右上方随机位置生成

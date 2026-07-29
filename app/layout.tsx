@@ -23,19 +23,23 @@ const orbitron = Orbitron({
 });
 
 // 思源宋体：正文阅读（SIL OFL 1.1 开源协议，无版权风险）
+// CJK 字体在 next/font 中不提供 chinese-simplified 子集，改用 latin + preload: false
+// 中文字符仍会按需加载，不影响实际渲染
 const notoSerif = Noto_Serif_SC({
   variable: "--font-serif-sc",
-  subsets: ["chinese-simplified"],
+  subsets: ["latin"],
   weight: ["400", "500", "700"],
   display: "swap",
+  preload: false,
 });
 
 // 思源黑体：标题层级（SIL OFL 1.1 开源协议，无版权风险）
 const notoSans = Noto_Sans_SC({
   variable: "--font-sans-sc",
-  subsets: ["chinese-simplified"],
+  subsets: ["latin"],
   weight: ["400", "500", "700"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
