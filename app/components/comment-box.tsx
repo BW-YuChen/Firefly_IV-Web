@@ -16,10 +16,13 @@ const GISCUS_REPO_ID = "R_kgDOSO-siQ";
 const GISCUS_CATEGORY = "Announcements";
 const GISCUS_CATEGORY_ID = "DIC_kwDOSO-sic4DCOcg";
 
-// 自定义主题：通过 jsDelivr CDN 加载（不经过 Cloudflare，避免 Giscus 跨域请求被 ERR_ABORTED）
-// jsDelivr 直接从 GitHub 仓库拉取，CORS 默认允许 *，且 @main 跟踪最新提交
-const GISCUS_LIGHT_THEME = "https://cdn.jsdelivr.net/gh/BW-YuChen/Firefly_IV-Web@main/public/giscus-light.css";
-const GISCUS_DARK_THEME = "https://cdn.jsdelivr.net/gh/BW-YuChen/Firefly_IV-Web@main/public/giscus-dark.css";
+// Giscus 主题：使用内置的 noborder 主题（背景透明、无边框），融入站点
+// 之前尝试自定义主题 URL（firefly-iv.top/jsdelivr），但 Cloudflare Bot Fight Mode
+// 会 challenge 来自 giscus.app 的跨域 CSS 请求，导致 net::ERR_ABORTED
+// 内置主题无需加载外部 CSS，确保 UI 在所有网络环境下一致
+// 自定义 teal 主题 CSS 已保留在 public/giscus-{light,dark}.css，待 Cloudflare 配置 WAF 例外后可切换回自定义 URL
+const GISCUS_LIGHT_THEME = "noborder_light";
+const GISCUS_DARK_THEME = "noborder_dark";
 
 /**
  * 评论框组件：Giscus（GitHub Discussions）
