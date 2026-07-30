@@ -16,11 +16,17 @@ const GISCUS_REPO_ID = "R_kgDOSO-siQ";
 const GISCUS_CATEGORY = "Announcements";
 const GISCUS_CATEGORY_ID = "DIC_kwDOSO-sic4DCOcg";
 
+// 自定义主题：使用站点同域绝对 URL，Giscus iframe（giscus.app）需跨域拉取
+// 主题 CSS 在 public/ 下，部署后路径为 https://www.firefly-iv.top/giscus-{light,dark}.css
+const GISCUS_LIGHT_THEME = "https://www.firefly-iv.top/giscus-light.css";
+const GISCUS_DARK_THEME = "https://www.firefly-iv.top/giscus-dark.css";
+
 /**
  * 评论框组件：Giscus（GitHub Discussions）
  * - 每篇文章 slug 唯一映射到一条 Discussion
  * - 首次评论时自动创建 Discussion
  * - 支持暗色/亮色主题动态切换（通过 postMessage 通知 iframe）
+ * - 懒加载：滚动到评论区附近才加载 Giscus iframe，减少首屏请求
  * - 评论提交频率由 GitHub 原生限制，无需额外客户端限流
  */
 export function CommentBox({ slug }: { slug: string }) {
@@ -46,10 +52,15 @@ export function CommentBox({ slug }: { slug: string }) {
         script.setAttribute("data-term", slug);
         script.setAttribute("data-strict", "0");
         script.setAttribute("data-reactions-enabled", "1");
-        script.setAttribute("data-emit-metadata", "0");
+        // 启用元数据推送：iframe 加载完成后通过 postMessage 推送 discussion 元数据
+        // 父页面的 CommentCount 组件监听 message 事件获取评论数，避免额外的 fetch 请求
+        script.setAttribute("data-emit-metadata", "1");
         script.setAttribute("data-input-position", "top");
-        script.setAttribute("data-theme", currentTheme === "dark" ? "dark" : "light");
+        // 使用自定义主题 URL：与站点配色融合
+        script.setAttribute("data-theme", currentTheme === "dark" ? GISCUS_DARK_THEME : GISCUS_LIGHT_THEME);
         script.setAttribute("data-lang", "zh-CN");
+        // 懒加载：滚动到评论区附近才加载 iframe，减少首屏请求
+        script.setAttribute("data-loading", "lazy");
 
         // 清空容器并重新加载（slug 变化时重建评论框）
         containerRef.current.innerHTML = "";
@@ -72,7 +83,7 @@ export function CommentBox({ slug }: { slug: string }) {
                     {
                         giscus: {
                             setConfig: {
-                                theme: newTheme === "dark" ? "dark" : "light",
+                                theme: newTheme === "dark" ? GISCUS_DARK_THEME : GISCUS_LIGHT_THEME,
                             },
                         },
                     },
@@ -91,6 +102,14 @@ export function CommentBox({ slug }: { slug: string }) {
 
     return (
         <div className="wiki-comment-box">
+            {/* 预连接 Giscus 与 GitHub 头像域名，加速 iframe 与头像加载
+                React 19 会自动把 <link rel=preconnect/dns-prefetch> 提升到 <head> */}
+            <link rel="preconnect" href="https://giscus.app" crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href="https://giscus.app" />
+            <link rel="preconnect" href="https://avatars.githubusercontent.com" crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href="https://avatars.githubusercontent.com" />
+            <link rel="preconnect" href="https://github.com" />
+            <link rel="dns-prefetch" href="https://github.com" />
             <h3 className="wiki-comment-title">
                 <MessageCircle size={18} />
                 <span>评论</span>

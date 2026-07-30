@@ -1,0 +1,178 @@
+/* Giscus 自定义主题：亮色 - 与 Firefly IV 站点配色融合
+   对齐 globals.css 亮色变量：
+   --primary: #0d9488 (teal-600)
+   --accent:  #f59e0b (amber-500)
+   --foreground: #1a2421
+   --surface: #ffffff
+   --border:  #dfe6db
+   --font-serif-sc: Noto Serif SC（文章正文字体） */
+:root {
+  --color-fg-default: #1a2421;
+  --color-fg-muted: #5b6b66;
+  --color-fg-subtle: #8a9893;
+  --color-canvas-default: rgba(255, 255, 255, 0.78);
+  --color-canvas-subtle: rgba(240, 244, 238, 0.85);
+  --color-canvas-inset: rgba(246, 248, 245, 0.92);
+  --color-border-default: rgba(223, 230, 219, 0.9);
+  --color-border-muted: rgba(223, 230, 219, 0.55);
+  --color-accent-fg: #0d9488;
+  --color-accent-emphasis: #0f766e;
+  --color-accent-subtle: rgba(13, 148, 136, 0.1);
+  --color-btn-bg: rgba(255, 255, 255, 0.7);
+  --color-btn-hover-bg: rgba(240, 244, 238, 0.92);
+  --color-btn-primary-bg: #0d9488;
+  --color-btn-primary-hover-bg: #0f766e;
+  --color-btn-primary-fg: #ffffff;
+  --color-header-bg: rgba(240, 244, 238, 0.55);
+  --color-header-text: #1a2421;
+  --color-counter-bg: rgba(13, 148, 136, 0.12);
+  --color-success-fg: #059669;
+  --color-success-bg: rgba(5, 150, 105, 0.12);
+  --color-danger-fg: #dc2626;
+  --color-danger-bg: rgba(220, 38, 38, 0.1);
+  --color-reaction-border: rgba(223, 230, 219, 0.7);
+  --color-reaction-hover-bg: rgba(13, 148, 136, 0.08);
+  --color-reaction-reacted-bg: rgba(13, 148, 136, 0.12);
+  --color-reaction-reacted-border: #0d9488;
+}
+
+main {
+  background: transparent !important;
+}
+
+/* 评论列表整体：使用与文章正文一致的衬线字体（思源宋体） */
+.gsc-comments-list,
+.gsc-tl-line,
+.gsc-comment-content {
+  font-family: "Noto Serif SC", var(--font-serif-sc), Georgia, serif !important;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: #1a2421;
+}
+
+/* 评论作者名、时间、操作按钮：使用无衬线字体保持清爽 */
+.gsc-comment-author,
+.gsc-comment-author-singular,
+.gsc-comment-meta,
+.gsc-reply-author,
+.gsc-comment-actions,
+.gsc-comment-box-meta,
+.gsc-comment-box-info,
+.gsc-tl-author {
+  font-family: var(--font-sans-sc, "Noto Sans SC"), -apple-system, "PingFang SC", sans-serif !important;
+}
+
+.gsc-comment,
+.gsc-reply {
+  border-radius: 10px !important;
+  border: 1px solid rgba(223, 230, 219, 0.7) !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  transition: background 0.2s ease;
+}
+
+.gsc-comment:hover,
+.gsc-reply:hover {
+  background: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* 评论输入框 */
+.gsc-comment-box-textarea,
+.gsc-reply-box-textarea {
+  border-radius: 10px !important;
+  border: 1px solid rgba(223, 230, 219, 0.95) !important;
+  font-family: "Noto Serif SC", var(--font-serif-sc), Georgia, serif !important;
+  font-size: 0.95rem !important;
+  line-height: 1.75 !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+}
+
+.gsc-comment-box-textarea:focus,
+.gsc-reply-box-textarea:focus {
+  border-color: #0d9488 !important;
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+}
+
+.gsc-reply-box,
+.gsc-comment-box {
+  border-radius: 10px !important;
+}
+
+/* 主按钮使用 teal 主色 */
+.btn-primary,
+.gsc-comment-box-buttons .btn-primary,
+.gsc-reply-box-buttons .btn-primary {
+  background-color: #0d9488 !important;
+  border-color: #0d9488 !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+}
+
+.btn-primary:hover,
+.gsc-comment-box-buttons .btn-primary:hover,
+.gsc-reply-box-buttons .btn-primary:hover {
+  background-color: #0f766e !important;
+  border-color: #0f766e !important;
+}
+
+/* 次按钮 */
+.btn,
+.gsc-comment-box-buttons .btn,
+.gsc-reply-box-buttons .btn {
+  border-radius: 8px !important;
+}
+
+/* 头像圆角与边框 */
+.gsc-comment-author-img img,
+.gsc-reply-author-img img,
+img.avatar {
+  border-radius: 50% !important;
+  border: 1px solid rgba(223, 230, 219, 0.9) !important;
+}
+
+/* 链接颜色统一为 teal */
+a,
+.gsc-comment-content a,
+.gsc-reply-content a {
+  color: #0d9488 !important;
+}
+
+a:hover,
+.gsc-comment-content a:hover,
+.gsc-reply-content a:hover {
+  color: #0f766e !important;
+}
+
+/* 反应（表情）按钮悬停色 */
+.gsc-reactions .gsc-reaction-button:hover {
+  border-color: #0d9488 !important;
+}
+
+/* 排版：评论正文段落间距与文章一致 */
+.gsc-comment-content p,
+.gsc-reply-content p {
+  margin: 0.75em 0;
+}
+
+.gsc-comment-content p:last-child,
+.gsc-reply-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* 行内代码使用站点等宽字体 */
+.gsc-comment-content code,
+.gsc-reply-content code,
+.gsc-comment-box-preview code {
+  font-family: var(--font-mono, "Geist Mono"), "Fira Code", Consolas, monospace !important;
+  background: rgba(13, 148, 136, 0.08) !important;
+  color: #0f766e !important;
+  border-radius: 4px !important;
+  padding: 0.1em 0.35em !important;
+  font-size: 0.9em !important;
+}
+
+/* 代码块圆角 */
+.gsc-comment-content pre,
+.gsc-reply-content pre,
+.gsc-comment-box-preview pre {
+  border-radius: 10px !important;
+}
