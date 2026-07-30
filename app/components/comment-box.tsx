@@ -16,10 +16,10 @@ const GISCUS_REPO_ID = "R_kgDOSO-siQ";
 const GISCUS_CATEGORY = "Announcements";
 const GISCUS_CATEGORY_ID = "DIC_kwDOSO-sic4DCOcg";
 
-// 自定义主题：使用站点同域绝对 URL，Giscus iframe（giscus.app）需跨域拉取
-// 主题 CSS 在 public/ 下，部署后路径为 https://www.firefly-iv.top/giscus-{light,dark}.css
-const GISCUS_LIGHT_THEME = "https://www.firefly-iv.top/giscus-light.css";
-const GISCUS_DARK_THEME = "https://www.firefly-iv.top/giscus-dark.css";
+// 自定义主题：通过 jsDelivr CDN 加载（不经过 Cloudflare，避免 Giscus 跨域请求被 ERR_ABORTED）
+// jsDelivr 直接从 GitHub 仓库拉取，CORS 默认允许 *，且 @main 跟踪最新提交
+const GISCUS_LIGHT_THEME = "https://cdn.jsdelivr.net/gh/BW-YuChen/Firefly_IV-Web@main/public/giscus-light.css";
+const GISCUS_DARK_THEME = "https://cdn.jsdelivr.net/gh/BW-YuChen/Firefly_IV-Web@main/public/giscus-dark.css";
 
 /**
  * 评论框组件：Giscus（GitHub Discussions）

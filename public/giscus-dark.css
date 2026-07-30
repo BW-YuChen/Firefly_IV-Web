@@ -44,7 +44,7 @@ main {
 .gsc-comments-list,
 .gsc-tl-line,
 .gsc-comment-content {
-  font-family: "Noto Serif SC", var(--font-serif-sc), Georgia, serif !important;
+  font-family: "Noto Serif SC", Georgia, "Times New Roman", serif !important;
   font-size: 0.95rem;
   line-height: 1.75;
   color: #d4d8dc;
@@ -59,7 +59,7 @@ main {
 .gsc-comment-box-meta,
 .gsc-comment-box-info,
 .gsc-tl-author {
-  font-family: var(--font-sans-sc, "Noto Sans SC"), -apple-system, "PingFang SC", sans-serif !important;
+  font-family: "Noto Sans SC", -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif !important;
 }
 
 .gsc-comment,
@@ -80,7 +80,7 @@ main {
 .gsc-reply-box-textarea {
   border-radius: 10px !important;
   border: 1px solid rgba(42, 45, 51, 0.95) !important;
-  font-family: "Noto Serif SC", var(--font-serif-sc), Georgia, serif !important;
+  font-family: "Noto Serif SC", Georgia, "Times New Roman", serif !important;
   font-size: 0.95rem !important;
   line-height: 1.75 !important;
   background: rgba(13, 14, 16, 0.7) !important;
@@ -163,7 +163,7 @@ a:hover,
 .gsc-comment-content code,
 .gsc-reply-content code,
 .gsc-comment-box-preview code {
-  font-family: var(--font-mono, "Geist Mono"), "Fira Code", Consolas, monospace !important;
+  font-family: "Geist Mono", "Fira Code", Consolas, "Courier New", monospace !important;
   background: rgba(45, 212, 191, 0.12) !important;
   color: #5eead4 !important;
   border-radius: 4px !important;
