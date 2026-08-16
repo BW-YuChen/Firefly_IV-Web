@@ -1,6 +1,6 @@
 ---
 title: "第二场"
-date: "2026-07-27"
+date: "2026-08-02"
 summary: "牛客多校第二场"
 tags: ["集训", "牛客", "多校"]
 published: true

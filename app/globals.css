@@ -441,6 +441,50 @@ html {
   line-height: 1.65;
 }
 
+/* ============================================================
+   Markdown 表格：边框 + 表头强调 + 斑马纹
+   ============================================================ */
+.wiki-prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.wiki-prose table th,
+.wiki-prose table td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.85rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.wiki-prose table th {
+  background: var(--surface-muted);
+  color: var(--foreground);
+  font-weight: 700;
+  font-family: var(--font-sans-sc), var(--font-geist-sans), sans-serif;
+  white-space: nowrap;
+}
+
+.wiki-prose table tbody tr:nth-child(even) {
+  background: color-mix(in oklab, var(--surface-muted) 45%, transparent);
+}
+
+.wiki-prose table tbody tr:hover {
+  background: color-mix(in oklab, var(--primary-soft) 35%, transparent);
+}
+
+/* 表格内行内代码不撑高行距 */
+.wiki-prose table td code,
+.wiki-prose table th code {
+  white-space: nowrap;
+}
+
 @media (max-width: 1023px) {
   .wiki-sidebar,
   .wiki-toc {
