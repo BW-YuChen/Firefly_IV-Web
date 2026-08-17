@@ -1334,7 +1334,8 @@ body,
 
 .splash-cursor {
   display: inline-block;
-  margin-left: 0.1em;
+  /* 加大与文字间距，避免打字初期光标紧贴单字（如“我”）被误认为字的一部分 */
+  margin-left: 0.3em;
   color: #ffba30;
   -webkit-text-fill-color: #ffba30;
   animation: splash-cursor-blink 1s steps(2) infinite;

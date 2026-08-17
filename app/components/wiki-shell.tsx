@@ -867,10 +867,12 @@ export default function WikiShell({ columns, metas, selectedPost }: Props) {
   // 避免在 render 阶段直接修改 ref 导致 SSR/CSR className 不一致（hydration mismatch）
   const lastColumnRef = useRef<ColumnName | null>(null);
   const [isSameColumnNav, setIsSameColumnNav] = useState(false);
+  // 依赖 slug 而非 activeColumn：同栏目内切换文章时 activeColumn 不变，
+  // 若依赖它会导致 effect 不触发，动画照常播放。改为每次导航都重新判断。
   useLayoutEffect(() => {
     setIsSameColumnNav(lastColumnRef.current === activeColumn);
     lastColumnRef.current = activeColumn;
-  }, [activeColumn]);
+  }, [selectedPost.slug]);
 
   // 搜索：独立跨栏目过滤，不再驱动左侧栏分组
   // 左侧栏始终展示完整 metas（按 activeColumn 过滤），搜索结果通过下拉弹层展示
